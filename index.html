@@ -135,32 +135,29 @@
                 }
             };
 
-            try {
-                const response = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Goog-Api-Key': GOOGLE_API_KEY,
-                        'X-Goog-FieldMask': 'places.displayName,places.location'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
+            // Wir werfen den proxyUrl komplett raus und rufen Google direkt an
+const targetUrl = 'https://places.googleapis.com/v1/places:searchNearby';
 
-                const data = await response.json();
+try {
+    const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_API_KEY,
+            'X-Goog-FieldMask': 'places.displayName,places.location'
+        },
+        body: JSON.stringify(requestBody)
+    });
 
-                if (data.places && data.places.length > 0) {
-                    statusText.textContent = `${data.places.length} Cafés gefunden!`;
+    // NEU: Wenn der Status nicht 200 (OK) ist, loggen wir den exakten Grund!
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Google API Detail-Fehler:", errorData);
+        statusText.textContent = "API Fehler: Schau in die Konsole (F12)";
+        return;
+    }
 
-                    data.places.forEach(place => {
-                        // Marker für Cafés (Gelb)
-                        const popup = new mapboxgl.Popup({ offset: 25 })
-                            .setText(place.displayName.text);
-
-                        new mapboxgl.Marker({ color: '#f39c12' })
-                            .setLngLat([place.location.longitude, place.location.latitude])
-                            .setPopup(popup)
-                            .addTo(map);
-                    });
+    const data = await response.json();
 
                     setTimeout(() => {
                         statusText.style.display = 'none';
