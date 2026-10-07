@@ -97,7 +97,7 @@
                         container: 'map',
                         style: 'mapbox://styles/mapbox/streets-v12',
                         center: [lon, lat],
-                        zoom: 14
+                        zoom: 13 // Leicht herausgezoomt für 5km Radius
                     });
 
                     // Marker für eigenen Standort (Rot)
@@ -117,8 +117,7 @@
         });
 
         async function findCafes(lat, lon) {
-            // Proxy zur Umgehung der CORS-Richtlinien im reinen Frontend
-            const proxyUrl = 'https://corsproxy.io/?';
+            // Direkter Aufruf der Google API ohne Proxy
             const targetUrl = 'https://places.googleapis.com/v1/places:searchNearby';
 
             const requestBody = {
@@ -130,34 +129,45 @@
                             "latitude": lat,
                             "longitude": lon
                         },
-                        "radius": 5000.0 // 2km
+                        "radius": 5000.0 // 5km Radius
                     }
                 }
             };
 
-            // Wir werfen den proxyUrl komplett raus und rufen Google direkt an
-const targetUrl = 'https://places.googleapis.com/v1/places:searchNearby';
+            try {
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Goog-Api-Key': GOOGLE_API_KEY,
+                        'X-Goog-FieldMask': 'places.displayName,places.location'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
 
-try {
-    const response = await fetch(targetUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': GOOGLE_API_KEY,
-            'X-Goog-FieldMask': 'places.displayName,places.location'
-        },
-        body: JSON.stringify(requestBody)
-    });
+                // Detail-Fehler auslesen, falls Google blockiert
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error("Google API Detail-Fehler:", errorData);
+                    statusText.textContent = "API Fehler: Schau in die Konsole (F12)";
+                    return;
+                }
 
-    // NEU: Wenn der Status nicht 200 (OK) ist, loggen wir den exakten Grund!
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Google API Detail-Fehler:", errorData);
-        statusText.textContent = "API Fehler: Schau in die Konsole (F12)";
-        return;
-    }
+                const data = await response.json();
 
-    const data = await response.json();
+                // Marker für die Cafés auf der Karte platzieren
+                if (data.places && data.places.length > 0) {
+                    statusText.textContent = `${data.places.length} Cafés gefunden!`;
+
+                    data.places.forEach(place => {
+                        const popup = new mapboxgl.Popup({ offset: 25 })
+                            .setText(place.displayName.text);
+
+                        new mapboxgl.Marker({ color: '#f39c12' })
+                            .setLngLat([place.location.longitude, place.location.latitude])
+                            .setPopup(popup)
+                            .addTo(map);
+                    });
 
                     setTimeout(() => {
                         statusText.style.display = 'none';
