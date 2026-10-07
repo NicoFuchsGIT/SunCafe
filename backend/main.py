@@ -45,22 +45,37 @@ def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400)
 
     overpass_url = "https://lz4.overpass-api.de/api/interpreter"
     overpass_query = f"""
-        [out:json][timeout:25];
+        [out:json][timeout:15];
         (
           node["amenity"="cafe"](around:{radius},{lat},{lon});
           node["shop"="bakery"](around:{radius},{lat},{lon});
           way["building"](around:{radius},{lat},{lon});
         );
         out geom;
-    """
-    headers = {"User-Agent": "SunCafe_Local_Test/1.0"}
+        """
+    headers = {"User-Agent": "SunCafe/1.0"}
 
-    try:
-        response = requests.post(overpass_url, data=overpass_query, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.RequestException as e:
-        return {"status": "Fehler", "nachricht": f"Overpass Fehler: {str(e)}"}
+    # 3 verschiedene Server-Adressen als Fallback
+    overpass_servers = [
+        "https://lz4.overpass-api.de/api/interpreter",
+        "https://z.overpass-api.de/api/interpreter",
+        "https://overpass-api.de/api/interpreter"
+    ]
+
+    data = None
+    for url in overpass_servers:
+        try:
+            # timeout=20 sorgt dafür, dass Python nicht ewig auf einen hängenden Server wartet
+            response = requests.post(url, data=overpass_query, headers=headers, timeout=20)
+            response.raise_for_status()
+            data = response.json()
+            break  # Erfolgreich! Wir brechen die Schleife ab und machen normal weiter.
+        except requests.exceptions.RequestException:
+            continue  # Fehler bei diesem Server? Ignorieren und sofort den nächsten probieren!
+
+    # Wenn nach allen 3 Servern immer noch keine Daten da sind:
+    if not data:
+        return {"status": "Fehler", "nachricht": "Alle Overpass-Server sind aktuell überlastet."}
 
     cafes = []
     buildings = []

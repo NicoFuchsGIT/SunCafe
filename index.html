@@ -102,7 +102,8 @@
                 const weatherData = await weatherRes.json();
 
                 // 3. UI zusammenbauen
-                let html = `<strong>Wetter in ${geoData.city}:</strong><div class="weather-hours">`;
+                const cityName = geoData.city || "deiner Umgebung";
+                let html = `<strong>Wetter in ${cityName}:</strong><div class="weather-hours">`;
 
                 // Wir starten bei i=1 (nächste volle Stunde) bis i=3 (in 3 Stunden)
                 for(let i = 1; i <= 3; i++) {
