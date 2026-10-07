@@ -186,7 +186,7 @@
         });
 
         async function fetchSunCafes(lat, lon) {
-            const backendUrl = `http://127.0.0.1:8000/api/sun_cafes?lat=${lat}&lon=${lon}&radius=1000`;
+            const backendUrl = `https://suncafe-backend.onrender.com/api/sun_cafes?lat=${lat}&lon=${lon}&radius=1000`;
 
             try {
                 const response = await fetch(backendUrl);
