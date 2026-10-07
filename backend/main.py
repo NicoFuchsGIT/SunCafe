@@ -45,7 +45,7 @@ def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400)
 
     overpass_url = "https://lz4.overpass-api.de/api/interpreter"
     overpass_query = f"""
-        [out:json][timeout:15];
+        [out:json][timeout:25];
         (
           node["amenity"="cafe"](around:{radius},{lat},{lon});
           node["shop"="bakery"](around:{radius},{lat},{lon});
@@ -53,9 +53,12 @@ def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400)
         );
         out geom;
         """
-    headers = {"User-Agent": "SunCafe/1.0"}
 
-    # 3 verschiedene Server-Adressen als Fallback
+    # Der "Ausweis": Overpass blockiert Render nicht mehr, wenn das nach einem echten Projekt aussieht
+    headers = {
+        "User-Agent": "SunCafeApp/1.0 (Student Project FH; contact: hello@suncafe.app)"
+    }
+
     overpass_servers = [
         "https://lz4.overpass-api.de/api/interpreter",
         "https://z.overpass-api.de/api/interpreter",
@@ -65,15 +68,16 @@ def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400)
     data = None
     for url in overpass_servers:
         try:
-            # timeout=20 sorgt dafür, dass Python nicht ewig auf einen hängenden Server wartet
-            response = requests.post(url, data=overpass_query, headers=headers, timeout=20)
+            # Das Timeout auf 25 Sekunden erhöht, da Cloud-Anfragen manchmal etwas länger dauern
+            response = requests.post(url, data=overpass_query, headers=headers, timeout=25)
             response.raise_for_status()
             data = response.json()
-            break  # Erfolgreich! Wir brechen die Schleife ab und machen normal weiter.
-        except requests.exceptions.RequestException:
-            continue  # Fehler bei diesem Server? Ignorieren und sofort den nächsten probieren!
+            break
+        except Exception as e:
+            # Gibt den Fehler im Render-Log aus, falls wir doch mal debuggen müssen
+            print(f"Fehler bei {url}: {e}")
+            continue
 
-    # Wenn nach allen 3 Servern immer noch keine Daten da sind:
     if not data:
         return {"status": "Fehler", "nachricht": "Alle Overpass-Server sind aktuell überlastet."}
 
