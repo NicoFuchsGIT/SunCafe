@@ -186,75 +186,106 @@
         });
 
         async function fetchSunCafes(lat, lon) {
-            const backendUrl = "https://suncafe.onrender.com";
+    const backendUrl = "https://suncafe.onrender.com";
+    const radius = 300;
 
-// Koordinaten runden, damit der Cache im Backend auch greift (~100 m)
-            const qLat = lat.toFixed(3), qLon = lon.toFixed(3);
-            const overpassQuery = `
-    [out:json][timeout:25];
-    (
-      node["amenity"="cafe"](around:${radius},${qLat},${qLon});
-      node["shop"="bakery"](around:${radius},${qLat},${qLon});
-      way["building"](around:${radius},${qLat},${qLon});
-    );
-    out geom;
-`;
+    // Koordinaten runden, damit der Cache im Backend auch greift (~100 m)
+    const qLat = lat.toFixed(3), qLon = lon.toFixed(3);
+    const overpassQuery = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="cafe"](around:${radius},${qLat},${qLon});
+          node["shop"="bakery"](around:${radius},${qLat},${qLon});
+          way["building"](around:${radius},${qLat},${qLon});
+        );
+        out geom;
+    `;
 
-            try {
-                statusText.textContent = "Lade Gebäude- und Café-Daten (Server wacht ggf. gerade auf)...";
+    try {
+        // 1. Overpass-Daten über das Backend holen
+        statusText.textContent = "Lade Gebäude- und Café-Daten (Server wacht ggf. gerade auf)...";
 
-                const overpassResponse = await fetch(`${backendUrl}/api/overpass`, {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({query: overpassQuery})
-                });
-                if (!overpassResponse.ok) throw new Error("Overpass-Proxy Fehler " + overpassResponse.status);
-                const osmData = await overpassResponse.json();
-                // ... Rest (Filter der Ketten) bleibt gleich
+        const overpassResponse = await fetch(`${backendUrl}/api/overpass`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: overpassQuery })
+        });
+        if (!overpassResponse.ok) throw new Error("Overpass-Proxy Fehler " + overpassResponse.status);
+        const osmData = await overpassResponse.json();
 
-                const mathResponse = await fetch(`${backendUrl}/api/calculate_shadows`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lat: lat, lon: lon, cafes: cafes, buildings: buildings })
-});
-if (!mathResponse.ok) throw new Error("Schatten-Berechnung Fehler " + mathResponse.status);
+        // 2. Ketten rausfiltern, Gebäude sammeln
+        let cafes = [];
+        let buildings = [];
+        const badChains = ["der mann", "aida", "felber", "ströck", "stroeck"];
 
-                // 4. Marker zeichnen
-                let sunCount = 0;
-                mathData.cafes.forEach(cafe => {
-                    const markerColor = cafe.in_sun ? '#f39c12' : '#2980b9';
-                    if (cafe.in_sun) sunCount++;
-
-                    const v_jetzt = cafe.vorhersage.jetzt ? '☀️' : '☁️';
-                    const v_1h = cafe.vorhersage.in_1h ? '☀️' : '☁️';
-                    const v_2h = cafe.vorhersage.in_2h ? '☀️' : '☁️';
-
-                    const popupContent = `<div style="padding-right: 20px; font-weight: bold; font-size: 14px; color: #333;">
-                        ${cafe.name}<br>
-                        <span style="font-size: 12px; font-weight: normal; color: ${cafe.in_sun ? '#d35400' : '#2980b9'};">
-                            Jetzt: ${v_jetzt} ${cafe.in_sun ? 'In der Sonne' : 'Im Schatten'}
-                        </span><br>
-                        <div style="margin-top: 5px; font-size: 12px; font-weight: normal; color: #555; background: #eee; padding: 4px; border-radius: 4px;">
-                            Vorschau:<br>
-                            In 1 Std: ${v_1h} &nbsp;|&nbsp; In 2 Std: ${v_2h}
-                        </div>
-                    </div>`;
-
-                    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent);
-
-                    new mapboxgl.Marker({ color: markerColor })
-                        .setLngLat([cafe.lon, cafe.lat])
-                        .setPopup(popup)
-                        .addTo(map);
-                });
-
-                statusText.textContent = `${mathData.cafes.length} Cafés gefunden (${sunCount} in der Sonne).`;
-
-            } catch (error) {
-                console.error("Fetch-Fehler:", error);
-                statusText.textContent = "Fehler: " + error.message;
+        osmData.elements.forEach(el => {
+            if (el.type === "node" && el.tags && (el.tags.amenity === "cafe" || el.tags.shop === "bakery")) {
+                const name = el.tags.name || "Unbekannt";
+                if (!badChains.some(chain => name.toLowerCase().includes(chain))) {
+                    cafes.push({ id: el.id, name: name, lat: el.lat, lon: el.lon });
+                }
+            } else if (el.type === "way" && el.tags && el.tags.building) {
+                if (el.geometry && el.geometry.length >= 3) {
+                    const coords = el.geometry.map(pt => [pt.lon, pt.lat]);
+                    let height = 15.0;
+                    if (el.tags.height) height = parseFloat(el.tags.height.replace("m", "").trim()) || 15.0;
+                    buildings.push({ coords: coords, height: height });
+                }
             }
+        });
+
+        if (cafes.length === 0) {
+            statusText.textContent = "Leider keine passenden Cafés im Umkreis gefunden.";
+            return;
         }
+
+        statusText.textContent = `Berechne Schatten-Vorhersage für ${cafes.length} Cafés...`;
+
+        // 3. Schattenberechnung im Backend
+        const mathResponse = await fetch(`${backendUrl}/api/calculate_shadows`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: lat, lon: lon, cafes: cafes, buildings: buildings })
+        });
+        if (!mathResponse.ok) throw new Error("Schatten-Berechnung Fehler " + mathResponse.status);
+        const mathData = await mathResponse.json();
+
+        // 4. Marker zeichnen
+        let sunCount = 0;
+        mathData.cafes.forEach(cafe => {
+            const markerColor = cafe.in_sun ? '#f39c12' : '#2980b9';
+            if (cafe.in_sun) sunCount++;
+
+            const v_jetzt = cafe.vorhersage.jetzt ? '☀️' : '☁️';
+            const v_1h = cafe.vorhersage.in_1h ? '☀️' : '☁️';
+            const v_2h = cafe.vorhersage.in_2h ? '☀️' : '☁️';
+
+            const popupContent = `<div style="padding-right: 20px; font-weight: bold; font-size: 14px; color: #333;">
+                ${cafe.name}<br>
+                <span style="font-size: 12px; font-weight: normal; color: ${cafe.in_sun ? '#d35400' : '#2980b9'};">
+                    Jetzt: ${v_jetzt} ${cafe.in_sun ? 'In der Sonne' : 'Im Schatten'}
+                </span><br>
+                <div style="margin-top: 5px; font-size: 12px; font-weight: normal; color: #555; background: #eee; padding: 4px; border-radius: 4px;">
+                    Vorschau:<br>
+                    In 1 Std: ${v_1h} &nbsp;|&nbsp; In 2 Std: ${v_2h}
+                </div>
+            </div>`;
+
+            const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent);
+
+            new mapboxgl.Marker({ color: markerColor })
+                .setLngLat([cafe.lon, cafe.lat])
+                .setPopup(popup)
+                .addTo(map);
+        });
+
+        statusText.textContent = `${mathData.cafes.length} Cafés gefunden (${sunCount} in der Sonne).`;
+
+    } catch (error) {
+        console.error("Fetch-Fehler:", error);
+        statusText.textContent = "Fehler: " + error.message;
+    }
+}
     </script>
 </body>
 </html>
