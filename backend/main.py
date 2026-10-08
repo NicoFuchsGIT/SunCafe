@@ -1,14 +1,12 @@
 import math
-import time
-import requests
-from fastapi import HTTPException
+from datetime import datetime, timezone, timedelta
+from typing import List, Dict, Any
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any
 from astral import LocationInfo
 from astral.sun import azimuth as get_azimuth, elevation as get_elevation
-from datetime import datetime, timezone, timedelta
 from shapely.geometry import Point, LineString, Polygon
 
 app = FastAPI(title="SunCafe API")
@@ -22,65 +20,39 @@ app.add_middleware(
 )
 
 
-# Das Modell für die Daten, die wir vom Frontend empfangen
 class GeoData(BaseModel):
     lat: float
     lon: float
     cafes: List[Dict[str, Any]]
     buildings: List[Dict[str, Any]]
 
-OVERPASS_ENDPOINTS = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://z.overpass-api.de/api/interpreter",
-]
-_cache = {}
-CACHE_TTL = 600
+
+@app.get("/")
+def health():
+    return {"status": "ok"}
 
 
-@app.post("/api/overpass")
-def overpass_proxy(req: OverpassRequest):
-    cached = _cache.get(req.query)
-    if cached and time.time() - cached[0] < CACHE_TTL:
-        return cached[1]
-
-    errors = []
-    for attempt in range(2):  # zwei Durchläufe über alle Server
-        for url in OVERPASS_ENDPOINTS:
-            try:
-                r = requests.post(
-                    url,
-                    data={"data": req.query},
-                    headers={"User-Agent": "SunCafe/1.0 (https://suncafe-nu.vercel.app)"},
-                    timeout=30,
-                )
-                if r.status_code == 200:
-                    data = r.json()
-                    _cache[req.query] = (time.time(), data)
-                    return data
-                errors.append(f"{url}: HTTP {r.status_code}")
-                print(f"Overpass {url}: HTTP {r.status_code} {r.text[:200]}")
-            except Exception as e:
-                errors.append(f"{url}: {type(e).__name__}")
-                print(f"Overpass {url}: {e}")
-        time.sleep(2)
-
-    raise HTTPException(status_code=502, detail=" | ".join(errors))
-
-# Aus @app.get wird @app.post, weil wir jetzt ein Datenpaket vom Frontend empfangen!
 @app.post("/api/calculate_shadows")
 def calculate_shadows(data: GeoData):
-    lat = data.lat
-    lon = data.lon
+    lat0, lon0 = data.lat, data.lon
 
-    observer = LocationInfo(name="Current", region="Local", timezone="UTC", latitude=lat, longitude=lon).observer
+    # Lokale Projektion: Grad -> Meter relativ zum Nutzerstandort
+    m_per_deg_lat = 111320.0
+    m_per_deg_lon = 40075000.0 * math.cos(math.radians(lat0)) / 360.0
+
+    def to_xy(lon, lat):
+        return ((lon - lon0) * m_per_deg_lon, (lat - lat0) * m_per_deg_lat)
+
+    observer = LocationInfo(
+        name="Current", region="Local", timezone="UTC",
+        latitude=lat0, longitude=lon0
+    ).observer
     now_utc = datetime.now(timezone.utc)
 
     zeitpunkte = {
         "jetzt": now_utc,
         "in_1h": now_utc + timedelta(hours=1),
-        "in_2h": now_utc + timedelta(hours=2)
+        "in_2h": now_utc + timedelta(hours=2),
     }
 
     sonnen_daten = {}
@@ -89,23 +61,29 @@ def calculate_shadows(data: GeoData):
         az = get_azimuth(observer, zeit)
         sonnen_daten[label] = {"elevation": el, "azimut": az, "ist_tag": el > 0}
 
-    # Gebäude für Shapely vorbereiten
+    # Gebäude in Meter-Koordinaten, ungültige Polygone reparieren
     shapely_buildings = []
     for bldg in data.buildings:
-        if len(bldg["coords"]) >= 3:
-            poly = Polygon(bldg["coords"])
+        try:
+            coords = bldg.get("coords", [])
+            if len(coords) < 3:
+                continue
+            poly = Polygon([to_xy(c[0], c[1]) for c in coords])
             if not poly.is_valid:
                 poly = poly.buffer(0)
             if poly.is_empty:
                 continue
-            shapely_buildings.append({"polygon": poly, "height": bldg["height"]})
+            shapely_buildings.append({
+                "polygon": poly,
+                "height": float(bldg.get("height", 15.0)),
+            })
+        except Exception as e:
+            print("Gebäude übersprungen:", e)
 
-    meters_per_deg_lat = 111320.0
-    meters_per_deg_lon = 40075000.0 * math.cos(math.radians(lat)) / 360.0
-
-    # Ray-Casting durchführen
+    # Ray-Casting
     for cafe in data.cafes:
-        cafe_pt = Point(cafe["lon"], cafe["lat"])
+        cx, cy = to_xy(cafe["lon"], cafe["lat"])
+        cafe_pt = Point(cx, cy)
         cafe["vorhersage"] = {}
 
         for label, sonne in sonnen_daten.items():
@@ -114,22 +92,22 @@ def calculate_shadows(data: GeoData):
                 continue
 
             in_sun = True
-            math_angle = 90.0 - sonne["azimut"]
-            dx_deg = (500.0 * math.cos(math.radians(math_angle))) / meters_per_deg_lon
-            dy_deg = (500.0 * math.sin(math.radians(math_angle))) / meters_per_deg_lat
+            az_rad = math.radians(sonne["azimut"])
+            # Azimut: 0° = Nord, im Uhrzeigersinn -> Richtung zur Sonne
+            dx = 500.0 * math.sin(az_rad)
+            dy = 500.0 * math.cos(az_rad)
+            ray = LineString([(cx, cy), (cx + dx, cy + dy)])
 
-            ray = LineString([cafe_pt, Point(cafe["lon"] + dx_deg, cafe["lat"] + dy_deg)])
+            tan_el = math.tan(math.radians(max(sonne["elevation"], 0.5)))
 
             for bldg in shapely_buildings:
-                if bldg["polygon"].contains(cafe_pt):
+                poly = bldg["polygon"]
+                # Café liegt im Gebäude (OSM-Node): dieses Gebäude ignorieren
+                if poly.contains(cafe_pt):
                     continue
-
-                if ray.intersects(bldg["polygon"]):
-                    intersection = ray.intersection(bldg["polygon"])
-                    dist_deg = cafe_pt.distance(intersection)
-                    dist_m = dist_deg * ((meters_per_deg_lat + meters_per_deg_lon) / 2.0)
-                    shadow_len = bldg["height"] / math.tan(math.radians(sonne["elevation"]))
-
+                if ray.intersects(poly):
+                    dist_m = cafe_pt.distance(ray.intersection(poly))
+                    shadow_len = bldg["height"] / tan_el
                     if shadow_len > dist_m:
                         in_sun = False
                         break
@@ -138,7 +116,4 @@ def calculate_shadows(data: GeoData):
 
         cafe["in_sun"] = cafe["vorhersage"]["jetzt"]
 
-    return {
-        "status": "Erfolgreich",
-        "cafes": data.cafes
-    }
+    return {"status": "Erfolgreich", "cafes": data.cafes}
