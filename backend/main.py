@@ -1,7 +1,8 @@
 import math
-import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Dict, Any
 from astral import LocationInfo
 from astral.sun import azimuth as get_azimuth, elevation as get_elevation
 from datetime import datetime, timezone, timedelta
@@ -17,18 +18,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Liste der unerwünschten Ketten (alles in Kleinbuchstaben für den Filter)
-UNERWUENSCHTE_KETTEN = ["der mann", "aida", "felber", "ströck", "stroeck", "anker", "unbekannt"]
+
+# Das Modell für die Daten, die wir vom Frontend empfangen
+class GeoData(BaseModel):
+    lat: float
+    lon: float
+    cafes: List[Dict[str, Any]]
+    buildings: List[Dict[str, Any]]
 
 
-@app.get("/api/sun_cafes")
-def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400):
+# Aus @app.get wird @app.post, weil wir jetzt ein Datenpaket vom Frontend empfangen!
+@app.post("/api/calculate_shadows")
+def calculate_shadows(data: GeoData):
+    lat = data.lat
+    lon = data.lon
+
     observer = LocationInfo(name="Current", region="Local", timezone="UTC", latitude=lat, longitude=lon).observer
-
-    # Zeitpunkte definieren: Jetzt, in 1h, in 2h
     now_utc = datetime.now(timezone.utc)
-    # TIPP: Für einen Tag-Test kannst du hier wieder eine feste Zeit eintragen
-    # now_utc = datetime(2026, 10, 8, 14, 0, tzinfo=timezone.utc)
 
     zeitpunkte = {
         "jetzt": now_utc,
@@ -36,90 +42,26 @@ def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400)
         "in_2h": now_utc + timedelta(hours=2)
     }
 
-    # Sonnenposition für alle 3 Zeitpunkte berechnen
     sonnen_daten = {}
     for label, zeit in zeitpunkte.items():
         el = get_elevation(observer, zeit)
         az = get_azimuth(observer, zeit)
         sonnen_daten[label] = {"elevation": el, "azimut": az, "ist_tag": el > 0}
 
-    overpass_url = "https://lz4.overpass-api.de/api/interpreter"
-    overpass_query = f"""
-        [out:json][timeout:25];
-        (
-          node["amenity"="cafe"](around:{radius},{lat},{lon});
-          node["shop"="bakery"](around:{radius},{lat},{lon});
-          way["building"](around:{radius},{lat},{lon});
-        );
-        out geom;
-        """
-
-    # Der "Ausweis": Overpass blockiert Render nicht mehr, wenn das nach einem echten Projekt aussieht
-    # Wir tarnen das Python-Skript als normalen Google Chrome Browser
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, wie Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Referer": "https://suncafe.app/"
-    }
-
-    # Neue, tolerantere Server ganz nach oben gesetzt
-    overpass_servers = [
-        "https://overpass.kumi.systems/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-        "https://lz4.overpass-api.de/api/interpreter",
-        "https://z.overpass-api.de/api/interpreter"
-    ]
-
-    data = None
-    for url in overpass_servers:
-        try:
-            # Das Timeout auf 25 Sekunden erhöht, da Cloud-Anfragen manchmal etwas länger dauern
-            response = requests.post(url, data=overpass_query, headers=headers, timeout=25)
-            response.raise_for_status()
-            data = response.json()
-            break
-        except Exception as e:
-            # Gibt den Fehler im Render-Log aus, falls wir doch mal debuggen müssen
-            print(f"Fehler bei {url}: {e}")
-            continue
-
-    if not data:
-        return {"status": "Fehler", "nachricht": "Alle Overpass-Server sind aktuell überlastet."}
-
-    cafes = []
-    buildings = []
-
-    for element in data.get("elements", []):
-        tags = element.get("tags", {})
-
-        if element["type"] == "node" and ("cafe" in tags.values() or "bakery" in tags.values()):
-            name = tags.get("name", "Unbekannt")
-
-            # FILTER: Ist der Name in der Ausschluss-Liste? Dann überspringen!
-            if any(kette in name.lower() for kette in UNERWUENSCHTE_KETTEN):
-                continue
-
-            cafes.append({
-                "id": element["id"],
-                "name": name,
-                "lat": element["lat"],
-                "lon": element["lon"]
+    # Gebäude für Shapely vorbereiten
+    shapely_buildings = []
+    for bldg in data.buildings:
+        if len(bldg["coords"]) >= 3:
+            shapely_buildings.append({
+                "polygon": Polygon(bldg["coords"]),
+                "height": bldg["height"]
             })
-
-        elif element["type"] == "way" and "building" in tags:
-            coords = [(pt["lon"], pt["lat"]) for pt in element.get("geometry", [])]
-            if len(coords) >= 3:
-                try:
-                    height = float(tags.get("height", "15").replace("m", "").strip())
-                except ValueError:
-                    height = 15.0
-                buildings.append({"polygon": Polygon(coords), "height": height})
 
     meters_per_deg_lat = 111320.0
     meters_per_deg_lon = 40075000.0 * math.cos(math.radians(lat)) / 360.0
 
-    # Ray-Casting für alle 3 Zeitpunkte durchführen
-    for cafe in cafes:
+    # Ray-Casting durchführen
+    for cafe in data.cafes:
         cafe_pt = Point(cafe["lon"], cafe["lat"])
         cafe["vorhersage"] = {}
 
@@ -135,7 +77,7 @@ def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400)
 
             ray = LineString([cafe_pt, Point(cafe["lon"] + dx_deg, cafe["lat"] + dy_deg)])
 
-            for bldg in buildings:
+            for bldg in shapely_buildings:
                 if bldg["polygon"].contains(cafe_pt):
                     continue
 
@@ -151,11 +93,9 @@ def get_sun_cafes(lat: float = 48.2082, lon: float = 16.3738, radius: int = 400)
 
             cafe["vorhersage"][label] = in_sun
 
-        # Für das Frontend die aktuelle Farbe beibehalten
         cafe["in_sun"] = cafe["vorhersage"]["jetzt"]
 
     return {
         "status": "Erfolgreich",
-        "gefundene_cafes": len(cafes),
-        "cafes": cafes
+        "cafes": data.cafes
     }
