@@ -210,7 +210,11 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ query: overpassQuery })
         });
-        if (!overpassResponse.ok) throw new Error("Overpass-Proxy Fehler " + overpassResponse.status);
+        if (!overpassResponse.ok) {
+            const err = await overpassResponse.json().catch(() => ({}));
+            throw new Error("Overpass-Proxy " + overpassResponse.status + ": " + (err.detail || ""));
+        }
+        
         const osmData = await overpassResponse.json();
 
         // 2. Ketten rausfiltern, Gebäude sammeln

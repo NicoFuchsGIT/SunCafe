@@ -31,15 +31,12 @@ class GeoData(BaseModel):
 
 OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://z.overpass-api.de/api/interpreter",
 ]
 _cache = {}
-CACHE_TTL = 600  # 10 Minuten
-
-
-class OverpassRequest(BaseModel):
-    query: str
+CACHE_TTL = 600
 
 
 @app.post("/api/overpass")
@@ -48,24 +45,28 @@ def overpass_proxy(req: OverpassRequest):
     if cached and time.time() - cached[0] < CACHE_TTL:
         return cached[1]
 
-    last_error = None
-    for url in OVERPASS_ENDPOINTS:
-        try:
-            r = requests.post(
-                url,
-                data={"data": req.query},
-                headers={"User-Agent": "SunCafe/1.0"},
-                timeout=30,
-            )
-            r.raise_for_status()
-            data = r.json()
-            _cache[req.query] = (time.time(), data)
-            return data
-        except Exception as e:
-            last_error = e
-            print(f"Overpass-Fehler bei {url}: {e}")
+    errors = []
+    for attempt in range(2):  # zwei Durchläufe über alle Server
+        for url in OVERPASS_ENDPOINTS:
+            try:
+                r = requests.post(
+                    url,
+                    data={"data": req.query},
+                    headers={"User-Agent": "SunCafe/1.0 (https://suncafe-nu.vercel.app)"},
+                    timeout=30,
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    _cache[req.query] = (time.time(), data)
+                    return data
+                errors.append(f"{url}: HTTP {r.status_code}")
+                print(f"Overpass {url}: HTTP {r.status_code} {r.text[:200]}")
+            except Exception as e:
+                errors.append(f"{url}: {type(e).__name__}")
+                print(f"Overpass {url}: {e}")
+        time.sleep(2)
 
-    raise HTTPException(status_code=502, detail=f"Overpass nicht erreichbar: {last_error}")
+    raise HTTPException(status_code=502, detail=" | ".join(errors))
 
 # Aus @app.get wird @app.post, weil wir jetzt ein Datenpaket vom Frontend empfangen!
 @app.post("/api/calculate_shadows")
