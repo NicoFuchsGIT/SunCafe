@@ -149,10 +149,13 @@
                     const timer = setTimeout(() => controller.abort(), 30000);
                     try {
                         const res = await fetch(url, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                            body: "data=" + encodeURIComponent(query),
-                            signal: controller.signal
+                        method: "POST",
+                        headers: {
+                        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                        "Accept": "application/json"
+                        },
+                        body: "data=" + encodeURIComponent(query),
+                        signal: controller.signal
                         });
                         clearTimeout(timer);
                         if (res.ok) return await res.json();
@@ -222,12 +225,12 @@
             const overpassQuery = `
                 [out:json][timeout:25];
                 (
-                  node["amenity"="cafe"](around:${RADIUS},${lat},${lon});
-                  node["shop"="bakery"](around:${RADIUS},${lat},${lon});
-                  way["building"](around:${RADIUS},${lat},${lon});
+                node["amenity"="cafe"](around:${RADIUS},${lat},${lon});
+                node["shop"="bakery"](around:${RADIUS},${lat},${lon});
+                way["building"](around:${RADIUS},${lat},${lon});
                 );
-                out geom;
-            `;
+                out tags geom qt;
+                `;
 
             try {
                 // 1. Overpass direkt vom Browser
@@ -237,7 +240,7 @@
                 // 2. Filtern
                 const cafes = [];
                 const buildings = [];
-                const badChains = ["der mann", "aida", "felber", "ströck", "stroeck"];
+                const badChains = ["der mann", "aida", "felber", "ströck", "stroeck", "anker", "unbekannt"];
 
                 osmData.elements.forEach(el => {
                     if (el.type === "node" && el.tags && (el.tags.amenity === "cafe" || el.tags.shop === "bakery")) {
