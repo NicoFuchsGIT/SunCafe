@@ -87,7 +87,8 @@
         mapboxgl.accessToken = 'pk.eyJ1IjoibmljbzI1MTAiLCJhIjoiY211eWc3OTBoMGxsNzJ5c2R1cHRrZ3d2aiJ9.Ax5zqllek79WPbU184yVnQ';
 
         const BACKEND_URL = "https://suncafe.onrender.com";
-        const RADIUS = 1000;
+        const RADIUS = 1000;          // Suchradius für Cafés
+        const BUILDING_RADIUS = 150;  // Gebäude nur rund um die Cafés (Schattenwurf)
 
         const OVERPASS_URLS = [
             "https://overpass-api.de/api/interpreter",
@@ -141,34 +142,53 @@
         loadLocalWeather();
 
         // --- OVERPASS: direkt aus dem Browser (Nutzer-IP), mit Fallback-Servern ---
-        async function fetchOverpass(query) {
+        const OVERPASS_URLS = [
+            "https://overpass-api.de/api/interpreter",
+            "https://overpass.private.coffee/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.openstreetmap.fr/api/interpreter"
+        ];
+
+        async function fetchOverpass(query, cacheKey) {
+            // Cache: gleicher Standort -> keine neue Anfrage
+            try {
+                const cached = sessionStorage.getItem(cacheKey);
+                if (cached) return JSON.parse(cached);
+            } catch (e) {}
+
+            // Startserver zufällig, damit nicht immer derselbe belastet wird
+            const urls = [...OVERPASS_URLS].sort(() => Math.random() - 0.5);
             const errors = [];
+
             for (let round = 0; round < 2; round++) {
-                for (const url of OVERPASS_URLS) {
+                for (const url of urls) {
+                    const host = new URL(url).host;
+                    statusText.textContent = `Lade Daten von ${host}...`;
                     const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 30000);
+                    const timer = setTimeout(() => controller.abort(), 20000);
                     try {
                         const res = await fetch(url, {
-                        method: "POST",
-                        headers: {
-                        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                        "Accept": "application/json"
-                        },
-                        body: "data=" + encodeURIComponent(query),
-                        signal: controller.signal
+                            method: "POST",
+                            headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                            body: "data=" + encodeURIComponent(query),
+                            signal: controller.signal
                         });
                         clearTimeout(timer);
-                        if (res.ok) return await res.json();
-                        errors.push(`${new URL(url).host}: HTTP ${res.status}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+                            return data;
+                        }
+                        errors.push(`${host}: HTTP ${res.status}`);
                     } catch (e) {
                         clearTimeout(timer);
-                        errors.push(`${new URL(url).host}: ${e.name}`);
+                        errors.push(`${host}: ${e.name}`);
                     }
                 }
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 2000));
             }
             console.warn("Overpass-Fehler:", errors);
-            throw new Error("Overpass nicht erreichbar (" + errors.join(", ") + ")");
+            throw new Error("Overpass gerade überlastet, bitte in einer Minute erneut versuchen.");
         }
 
         // --- UI ---
@@ -225,22 +245,24 @@
             const overpassQuery = `
                 [out:json][timeout:25];
                 (
-                node["amenity"="cafe"](around:${RADIUS},${lat},${lon});
-                node["shop"="bakery"](around:${RADIUS},${lat},${lon});
-                way["building"](around:${RADIUS},${lat},${lon});
-                );
+                  node["amenity"="cafe"](around:${RADIUS},${lat},${lon});
+                  node["shop"="bakery"](around:${RADIUS},${lat},${lon});
+                )->.c;
+                .c out body;
+                way["building"](around.c:${BUILDING_RADIUS});
                 out tags geom qt;
-                `;
+            `;
 
             try {
                 // 1. Overpass direkt vom Browser
                 statusText.textContent = "Lade Gebäude- und Café-Daten...";
-                const osmData = await fetchOverpass(overpassQuery);
+                const cacheKey = "osm_" + lat.toFixed(3) + "_" + lon.toFixed(3) + "_" + RADIUS;
+                const osmData = await fetchOverpass(overpassQuery, cacheKey);
 
                 // 2. Filtern
                 const cafes = [];
                 const buildings = [];
-                const badChains = ["der mann", "aida", "felber", "ströck", "stroeck", "anker", "unbekannt"];
+                const badChains = ["der mann", "aida", "felber", "ströck", "stroeck", "anker", "unbekannt", "tchibo"];
 
                 osmData.elements.forEach(el => {
                     if (el.type === "node" && el.tags && (el.tags.amenity === "cafe" || el.tags.shop === "bakery")) {
