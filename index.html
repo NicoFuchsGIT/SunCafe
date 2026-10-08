@@ -86,16 +86,6 @@
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoibmljbzI1MTAiLCJhIjoiY211eWc3OTBoMGxsNzJ5c2R1cHRrZ3d2aiJ9.Ax5zqllek79WPbU184yVnQ';
 
-        const BACKEND_URL = "https://suncafe.onrender.com";
-        const RADIUS = 1000;          // Suchradius für Cafés
-        const BUILDING_RADIUS = 150;  // Gebäude nur rund um die Cafés (Schattenwurf)
-
-        const OVERPASS_URLS = [
-            "https://overpass-api.de/api/interpreter",
-            "https://overpass.private.coffee/api/interpreter",
-            "https://overpass.kumi.systems/api/interpreter"
-        ];
-
         // --- WETTER VORSCHAU ---
         async function loadLocalWeather() {
             const weatherDiv = document.getElementById('weather-preview');
@@ -254,7 +244,6 @@
             `;
 
             try {
-                // 1. Overpass direkt vom Browser
                 statusText.textContent = "Lade Gebäude- und Café-Daten...";
                 const cacheKey = "osm_" + lat.toFixed(3) + "_" + lon.toFixed(3) + "_" + RADIUS;
                 const osmData = await fetchOverpass(overpassQuery, cacheKey);
