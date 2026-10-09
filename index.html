@@ -86,7 +86,7 @@
     const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
     const WIEN = {lat: 48.2082, lng: 16.3738};
     const OVERPASS = ['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
-    const CAFE_RADIUS = 1000, BUILD_RADIUS = 150, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
+    const CAFE_RADIUS = 1000, BUILD_RADIUS = 120,SHADOW_CAFES = 30, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
     const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
     // ---------- Zustand ----------
@@ -120,17 +120,15 @@
     });
 
     // ---------- Daten laden (Overpass, Cache, Rotation) ----------
-    async function fetchOverpass(lat, lng) {
-        const key = `sc:${lat.toFixed(3)},${lng.toFixed(3)}`;
+    async function overpass(q, key, ms) {
         try { const c = sessionStorage.getItem(key); if (c) return JSON.parse(c); } catch(e) {}
-        const q = `[out:json][timeout:25];(node["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});way["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});node["shop"="bakery"](around:${CAFE_RADIUS},${lat},${lng});)->.c;.c out body center;way["building"](around.c:${BUILD_RADIUS});out tags geom qt;`;
         let err;
         for (let i = 0; i < OVERPASS.length * 2; i++) {
             if (i === OVERPASS.length) await new Promise(r => setTimeout(r, 2000));
             const url = OVERPASS[(osrv + i) % OVERPASS.length];
             $('status').textContent = 'Lade Daten von ' + new URL(url).host + ' …';
             try {
-                const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 30000);
+                const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
                 const r = await fetch(url, {method:'POST', body:'data=' + encodeURIComponent(q), signal:ctl.signal,
                     headers:{'Content-Type':'application/x-www-form-urlencoded'}});
                 clearTimeout(to);
@@ -142,6 +140,14 @@
         }
         throw err;
     }
+    const fetchCafes = (lat, lng) => {
+        const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
+        return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a});out body center;`, `sc:c:${lat},${lng}`, 20000);
+    };
+    const fetchBuildings = (list, lat, lng) => {
+        const parts = list.map(c => `way["building"](around:${BUILD_RADIUS},${c.lat.toFixed(5)},${c.lng.toFixed(5)});`).join('');
+        return overpass(`[out:json][timeout:40];(${parts});out tags geom qt;`, `sc:b:${lat},${lng}:${list.length}`, 45000);
+    };
 
     // ---------- Aufbereitung ----------
     const polyContains = (pts, x, y) => { let c = false;
@@ -149,31 +155,37 @@
             if ((pts[i][1] > y) !== (pts[j][1] > y) && x < (pts[j][0]-pts[i][0]) * (y-pts[i][1]) / (pts[j][1]-pts[i][1]) + pts[i][0]) c = !c;
         return c; };
 
-    function buildCafes(data, lat0, lng0) {
+    function parseCafes(data, lat0, lng0) {
         const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 111320;
+        return data.elements.filter(e => e.tags && (e.tags.amenity === 'cafe' || e.tags.shop === 'bakery') && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k))).map(e => {
+            const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
+            if (lat == null) return null;
+            let oh = null; const raw = e.tags.opening_hours;
+            if (raw) { try { oh = new opening_hours(raw, {lat, lon:lng, address:{country_code:'at'}}, {locale:'de'}); } catch(x) { oh = null; } }
+            return {id:String(e.id), name:e.tags.name || 'Café ohne Namen', lat, lng, loc:[], calc:false, oh, raw,
+                dist:Math.hypot((lng - lng0) * kx, (lat - lat0) * ky), outdoor:e.tags.outdoor_seating,
+                addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
+        }).filter(Boolean);
+    }
+
+    function attachBuildings(list, data) {
         const bl = data.elements.filter(e => e.type === 'way' && e.tags && e.tags.building && e.geometry).map(e => {
             const t = e.tags;
             const h = t.height ? (parseFloat(String(t.height).replace('m','').trim()) || 15) : t['building:levels'] ? (parseFloat(t['building:levels']) || 5) * 3 : 15;
             return {h, g:e.geometry};
         });
-        return data.elements.filter(e => e.tags && (e.tags.amenity === 'cafe' || e.tags.shop === 'bakery') && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k))).map(e => {
-            const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
-            if (lat == null) return null;
-            const loc = [];
+        for (const c of list) {
+            const kx = 111320 * Math.cos(c.lat * Math.PI / 180), ky = 111320;
+            c.loc = [];
             for (const b of bl) {
-                const pts = b.g.map(p => [(p.lon - lng) * kx, (p.lat - lat) * ky]);
+                const pts = b.g.map(p => [(p.lon - c.lng) * kx, (p.lat - c.lat) * ky]);
                 if (!pts.some(p => Math.abs(p[0]) < SHADOW_REACH && Math.abs(p[1]) < SHADOW_REACH)) continue;
                 if (polyContains(pts, 0, 0)) continue; // eigenes Gebäude wirft keinen Schatten auf die Terrasse
-                loc.push({h:b.h, pts});
+                c.loc.push({h:b.h, pts});
             }
-            let oh = null; const raw = e.tags.opening_hours;
-            if (raw) { try { oh = new opening_hours(raw, {lat, lon:lng, address:{country_code:'at'}}, {locale:'de'}); } catch(x) { oh = null; } }
-            const dm = Math.hypot((lng - lng0) * kx, (lat - lat0) * ky);
-            return {id:String(e.id), name:e.tags.name || 'Café ohne Namen', lat, lng, loc, oh, raw, dist:dm,
-                outdoor:e.tags.outdoor_seating, addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
-        }).filter(Boolean);
+            c.calc = true;
+        }
     }
-
     // ---------- Rechnung ----------
     function inShade(c, alt, az) { // az: Kompass, Richtung zur Sonne
         const dx = Math.sin(az), dy = Math.cos(az), ta = Math.tan(Math.max(alt, 0.5 * Math.PI / 180));
@@ -212,8 +224,7 @@
         const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
         const rows = [];
         for (const c of cafes) {
-            c.state = night ? 'night' : (inShade(c, alt, az) ? 'shade' : 'sun');
-            c.info = openInfo(c, d);
+        c.state = night ? 'night' : !c.calc ? 'pending' : (inShade(c, alt, az) ? 'shade' : 'sun');            c.info = openInfo(c, d);
             if (onlyOpen && c.info.o === 0) continue;
             if (onlySun && c.state !== 'sun') continue;
             rows.push(c);
@@ -235,16 +246,14 @@
         $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '');
         if (popup && popup._cid) openPopup(popup._cid);
     }
-    const stateText = c => ({sun:'Sonne', shade:'Schatten', night:'Nacht'})[c.state];
-
+    const stateText = c => ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
     function openPopup(id) {
         const c = cafes.find(x => x.id === id); if (!c) return;
         if (popup) popup.remove();
         const out = c.outdoor === 'yes' ? 'Außenplätze: ja' : c.outdoor === 'no' ? 'Außenplätze: nein' : 'Außenplätze: unbekannt';
         const el = document.createElement('div'), b = document.createElement('b');
         b.textContent = c.name; el.appendChild(b);
-        [stateText(c) + ' (Gebäudeschatten, Näherung)', c.info.text, out, c.addr].filter(Boolean).forEach(t => {
-            const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
+        [stateText(c) + (c.calc ? ' (Gebäudeschatten, Näherung)' : ''), c.info.text, out, c.addr].filter(Boolean).forEach(t => {            const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
         popup = new maplibregl.Popup({closeButton:true, closeOnClick:false, offset:12}).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
         popup._cid = id;
         popup.on('close', () => { if (popup && popup._cid === id) popup._cid = null; });
@@ -267,22 +276,35 @@
 
     // ---------- Ort setzen ----------
     async function setPlace(lat, lng, move = true) {
-        place = {lat, lng};
+        const mine = place = {lat, lng};
         if (popup) { popup.remove(); popup = null; }
         map.getSource('center').setData({type:'Point', coordinates:[lng, lat]});
         if (move) map.flyTo({center:[lng, lat], zoom:Math.max(map.getZoom(), 15.5)});
-        $('status').textContent = 'Lade Cafés und Gebäude …'; $('list').innerHTML = '';
+        $('status').textContent = 'Lade Cafés …'; $('list').innerHTML = '';
         loadWx(lat, lng);
         const now = new Date(); now.setMinutes(Math.floor(now.getMinutes() / STEP_MIN) * STEP_MIN, 0, 0); t0 = now;
         $('slider').value = 0;
+        const rl = +lat.toFixed(3), rg = +lng.toFixed(3);
         try {
-            const rl = +lat.toFixed(3), rg = +lng.toFixed(3);
-            cafes = buildCafes(await fetchOverpass(rl, rg), lat, lng);
-            update();
-            if (!cafes.length) $('status').textContent = 'Keine Cafés im Umkreis von 1 km gefunden.';
+            const list = parseCafes(await fetchCafes(rl, rg), lat, lng);
+            if (place !== mine) return;
+            cafes = list;
         } catch(e) {
+            if (place !== mine) return;
             cafes = []; map.getSource('cafes').setData({type:'FeatureCollection', features:[]});
-            $('status').textContent = 'Daten konnten nicht geladen werden (Overpass überlastet). Bitte später erneut tippen.';
+            $('status').textContent = 'Cafés konnten nicht geladen werden (Overpass nicht erreichbar). Bitte später erneut tippen.';
+            return;
+        }
+        update();
+        if (!cafes.length) { $('status').textContent = 'Keine Cafés im Umkreis von 1 km gefunden.'; return; }
+        try {
+            const near = [...cafes].sort((a, b) => a.dist - b.dist).slice(0, SHADOW_CAFES);
+            const data = await fetchBuildings(near, rl, rg);
+            if (place !== mine) return;
+            attachBuildings(near, data);
+            update();
+        } catch(e) {
+            if (place === mine) $('status').textContent += ' · Schatten nicht verfügbar (Gebäudedaten konnten nicht geladen werden)';
         }
     }
 
