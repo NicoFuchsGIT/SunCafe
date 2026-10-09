@@ -8,8 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
         :root{--bg:#f7f9fb;--ink:#14213d;--mute:#5d6b7e;--line:#dde3ea;--sun:#ffb703;--shade:#6c7a89;--card:#fff}
-        @media(prefers-color-scheme:dark){:root{--bg:#10151f;--ink:#e8edf4;--mute:#97a3b4;--line:#27303d;--card:#18202c}
-            .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(.9)}}
+        html.dark{--bg:#10151f;--ink:#e8edf4;--mute:#97a3b4;--line:#27303d;--card:#18202c}
+        html.dark .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(.9)}
         *{box-sizing:border-box}
         html,body{height:100%;margin:0;font-family:"Bricolage Grotesque",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
         #app{display:grid;grid-template-columns:360px 1fr;height:100%}
@@ -85,7 +85,7 @@
     // ---------- Einstellungen ----------
     const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
     const WIEN = {lat: 48.2082, lng: 16.3738};
-    const OVERPASS = ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+    const OVERPASS = ['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
     const CAFE_RADIUS = 1000, BUILD_RADIUS = 150, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
     const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
@@ -115,17 +115,20 @@
         map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
         map.on('mouseleave','cafes',()=>map.getCanvas().style.cursor='');
         mapReady = true;
-        setPlace(place.lat, place.lng, false);
+        const fallback = () => setPlace(WIEN.lat, WIEN.lng, false);
+        navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => setPlace(p.coords.latitude, p.coords.longitude), fallback, {timeout:8000, maximumAge:60000}) : fallback();
     });
 
     // ---------- Daten laden (Overpass, Cache, Rotation) ----------
     async function fetchOverpass(lat, lng) {
         const key = `sc:${lat.toFixed(3)},${lng.toFixed(3)}`;
         try { const c = sessionStorage.getItem(key); if (c) return JSON.parse(c); } catch(e) {}
-        const q = `[out:json][timeout:25];(node["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});way["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});node["shop"="bakery"](around:${CAFE_RADIUS},${lat},${lng}););->.c;out center tags;way["building"](around.c:${BUILD_RADIUS});out geom tags;`;
+        const q = `[out:json][timeout:25];(node["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});way["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});node["shop"="bakery"](around:${CAFE_RADIUS},${lat},${lng});)->.c;.c out body center;way["building"](around.c:${BUILD_RADIUS});out tags geom qt;`;
         let err;
-        for (let i = 0; i < OVERPASS.length; i++) {
+        for (let i = 0; i < OVERPASS.length * 2; i++) {
+            if (i === OVERPASS.length) await new Promise(r => setTimeout(r, 2000));
             const url = OVERPASS[(osrv + i) % OVERPASS.length];
+            $('status').textContent = 'Lade Daten von ' + new URL(url).host + ' …';
             try {
                 const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 30000);
                 const r = await fetch(url, {method:'POST', body:'data=' + encodeURIComponent(q), signal:ctl.signal,
@@ -203,6 +206,7 @@
         $('tlabel').textContent = s ? 'Jetzt' : fmtD(d);
         const sp = SunCalc.getPosition(d, place.lat, place.lng), alt = sp.altitude, az = sp.azimuth + Math.PI;
         const night = alt < MIN_ALT;
+        document.documentElement.classList.toggle('dark', night);
         $('sunstate').textContent = night ? 'Sonne unter dem Horizont' : 'Sonnenhöhe ' + Math.round(alt * 180 / Math.PI) + '°';
         showWx(d);
         const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
