@@ -1,350 +1,309 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SunCafe - Finde Sonnenplätze</title>
-
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
-
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>SunCafe – Finde Sonnenplätze</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f8f9fa;
-        }
-        #header {
-            padding: 20px;
-            text-align: center;
-            z-index: 10;
-            background: white;
-            width: 100%;
-            box-sizing: border-box;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 { margin: 0 0 10px 0; color: #333; }
-        button {
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            background-color: #f39c12;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: background-color 0.2s;
-        }
-        button:hover { background-color: #e67e22; }
-        button:disabled { background-color: #ccc; cursor: default; }
-        #status { margin-top: 10px; font-weight: 500; color: #2c3e50; }
-        #map {
-            flex-grow: 1;
-            width: 100%;
-            display: none;
-        }
-        #weather-preview {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f1f2f6;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #2f3640;
-            display: none;
-        }
-        .weather-hours {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 10px;
-        }
-        .weather-hour {
-            text-align: center;
-            background: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        :root{--bg:#f7f9fb;--ink:#14213d;--mute:#5d6b7e;--line:#dde3ea;--sun:#ffb703;--shade:#6c7a89;--card:#fff}
+        @media(prefers-color-scheme:dark){:root{--bg:#10151f;--ink:#e8edf4;--mute:#97a3b4;--line:#27303d;--card:#18202c}
+            .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(.9)}}
+        *{box-sizing:border-box}
+        html,body{height:100%;margin:0;font-family:"Bricolage Grotesque",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+        #app{display:grid;grid-template-columns:360px 1fr;height:100%}
+        #side{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--bg)}
+        #map{height:100%;width:100%}
+        header{padding:14px 16px 10px;padding-top:max(14px,env(safe-area-inset-top))}
+        h1{font-size:22px;font-weight:800;margin:0 0 2px}
+        #wx{font-size:13px;color:var(--mute);min-height:18px}
+        .row{display:flex;gap:8px;margin-top:10px}
+        input[type=search]{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px}
+        button{font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
+        button:focus-visible,input:focus-visible,li:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+        #time{padding:4px 16px 8px}
+        #tl{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:4px}
+        #tl small{font-weight:400;color:var(--mute)}
+        input[type=range]{width:100%;accent-color:var(--sun)}
+        #filters{display:flex;gap:16px;padding:2px 16px 10px;font-size:14px;border-bottom:1px solid var(--line)}
+        #filters label{display:flex;gap:6px;align-items:center;cursor:pointer}
+        #status{padding:8px 16px;font-size:13px;color:var(--mute)}
+        ul{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
+        li{display:flex;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid var(--line);cursor:pointer}
+        li:hover{background:var(--card)}
+        .dot{width:14px;height:14px;border-radius:50%;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+        .dot.sun{background:var(--sun)}.dot.shade{background:var(--shade)}.dot.night{background:#b8c0cc}
+        .dot.unk{border-color:var(--ink)}
+        li.closed{opacity:.5}
+        .nm{font-weight:600;font-size:15px}.sub{font-size:12.5px;color:var(--mute)}
+        .dist{margin-left:auto;font-size:12.5px;color:var(--mute);white-space:nowrap}
+        #legend{padding:8px 16px calc(8px + env(safe-area-inset-bottom));font-size:11.5px;color:var(--mute);border-top:1px solid var(--line)}
+        .maplibregl-popup-content{font-family:inherit;color:#14213d;padding:12px 14px;min-width:200px}
+        .maplibregl-popup-content b{font-size:15px}
+        .maplibregl-popup-content p{margin:4px 0 0;font-size:13px}
+        .maplibregl-popup-close-button{font-size:22px;padding:2px 9px}
+        @media(max-width:760px){
+            #app{grid-template-columns:1fr;grid-template-rows:46% 54%}
+            #map{grid-row:1}#side{grid-row:2;border-right:0;border-top:1px solid var(--line)}
+            header{padding-bottom:4px}.row{margin-top:6px}
         }
     </style>
 </head>
 <body>
-
-    <div id="header">
-        <h1>☀️ SunCafe</h1>
-        <div id="weather-preview">Lade lokales Wetter...</div>
-        <button id="locate-btn">📍 Cafés im Umkreis finden</button>
-        <p id="status"></p>
-    </div>
-
+<div id="app">
+    <aside id="side">
+        <header>
+            <h1>☀️ SunCafe</h1>
+            <div id="wx">Wetter wird geladen …</div>
+            <div class="row">
+                <input id="q" type="search" placeholder="Adresse suchen, Enter drücken" aria-label="Adresse suchen">
+                <button id="loc" title="Mein Standort">Standort</button>
+            </div>
+        </header>
+        <div id="time">
+            <div id="tl"><span id="tlabel">Jetzt</span><small id="sunstate"></small></div>
+            <input id="slider" type="range" min="0" max="96" value="0" aria-label="Uhrzeit, bis 48 Stunden voraus">
+        </div>
+        <div id="filters">
+            <label><input type="checkbox" id="fopen"> Geöffnet</label>
+            <label><input type="checkbox" id="fsun"> Nur Sonne</label>
+        </div>
+        <div id="status">Karte antippen oder Adresse suchen, um Cafés zu laden.</div>
+        <ul id="list"></ul>
+        <div id="legend">Gelb: Sonne · Grau: Schatten · Hellgrau: Nacht · Blasser Eintrag: geschlossen · Dunkler Rand: Öffnungszeiten unbekannt (bei „Geöffnet“ trotzdem sichtbar). Daten © OpenStreetMap contributors</div>
+    </aside>
     <div id="map"></div>
+</div>
 
-    <script>
-        mapboxgl.accessToken = 'pk.eyJ1IjoibmljbzI1MTAiLCJhIjoiY211eWc3OTBoMGxsNzJ5c2R1cHRrZ3d2aiJ9.Ax5zqllek79WPbU184yVnQ';
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>window.maplibregl||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/opening_hours@3.8.0/opening_hours.min.js"></script>
+<script>
+    // ---------- Einstellungen ----------
+    const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
+    const WIEN = {lat: 48.2082, lng: 16.3738};
+    const OVERPASS = ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+    const CAFE_RADIUS = 1000, BUILD_RADIUS = 150, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
+    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
-        // --- KONSTANTEN ---
-        const BACKEND_URL = "https://suncafe.onrender.com";
-        const RADIUS = 1000;          // Suchradius für Cafés (m)
-        const BUILDING_RADIUS = 150;  // Gebäude nur rund um die Cafés (m)
+    // ---------- Zustand ----------
+    let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0;
+    const $ = id => document.getElementById(id);
+    const fmtT = d => d.toLocaleTimeString('de-AT', {hour:'2-digit', minute:'2-digit'});
+    const fmtD = d => DAYS[d.getDay()] + ' ' + fmtT(d);
+    const curTime = () => new Date(t0.getTime() + $('slider').value * STEP_MIN * 60000);
 
-        const OVERPASS_URLS = [
-            "https://overpass-api.de/api/interpreter",
-            "https://overpass.private.coffee/api/interpreter",
-            "https://overpass.kumi.systems/api/interpreter",
-            "https://overpass.openstreetmap.fr/api/interpreter"
-        ];
+    // ---------- Karte ----------
+    const map = new maplibregl.Map({container:'map', style:STYLE_URL, center:[place.lng, place.lat], zoom:15.5, attributionControl:false});
+    map.addControl(new maplibregl.AttributionControl({compact:true, customAttribution:'© OpenStreetMap contributors'}));
+    map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right');
+    map.on('load', () => {
+        map.addSource('cafes', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+        map.addSource('center', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+        map.addLayer({id:'center', type:'circle', source:'center', paint:{'circle-radius':6,'circle-color':'#3b82f6','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
+        map.addLayer({id:'cafes', type:'circle', source:'cafes', paint:{
+                'circle-radius':['interpolate',['linear'],['zoom'],12,5,16,10],
+                'circle-color':['match',['get','s'],'sun','#ffb703','shade','#6c7a89','#b8c0cc'],
+                'circle-opacity':['case',['==',['get','o'],0],0.4,1],
+                'circle-stroke-width':2,
+                'circle-stroke-color':['match',['get','o'],-1,'#14213d','#ffffff']}});
+        map.on('click', 'cafes', e => { e.originalEvent.cafe = true; openPopup(e.features[0].properties.id); });
+        map.on('click', e => { if (!e.originalEvent.cafe) setPlace(e.lngLat.lat, e.lngLat.lng); });
+        map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
+        map.on('mouseleave','cafes',()=>map.getCanvas().style.cursor='');
+        mapReady = true;
+        setPlace(place.lat, place.lng, false);
+    });
 
-        // --- DOM ---
-        const locateBtn = document.getElementById('locate-btn');
-        const statusText = document.getElementById('status');
-        const mapContainer = document.getElementById('map');
-        let map = null;
-        let markers = [];
-
-        // --- WETTER VORSCHAU ---
-        async function loadLocalWeather() {
-            const weatherDiv = document.getElementById('weather-preview');
-            weatherDiv.style.display = 'block';
-
+    // ---------- Daten laden (Overpass, Cache, Rotation) ----------
+    async function fetchOverpass(lat, lng) {
+        const key = `sc:${lat.toFixed(3)},${lng.toFixed(3)}`;
+        try { const c = sessionStorage.getItem(key); if (c) return JSON.parse(c); } catch(e) {}
+        const q = `[out:json][timeout:25];(node["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});way["amenity"="cafe"](around:${CAFE_RADIUS},${lat},${lng});node["shop"="bakery"](around:${CAFE_RADIUS},${lat},${lng}););->.c;out center tags;way["building"](around.c:${BUILD_RADIUS});out geom tags;`;
+        let err;
+        for (let i = 0; i < OVERPASS.length; i++) {
+            const url = OVERPASS[(osrv + i) % OVERPASS.length];
             try {
-                const geoRes = await fetch('https://get.geojs.io/v1/ip/geo.json');
-                const geoData = await geoRes.json();
-
-                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${geoData.latitude}&longitude=${geoData.longitude}&hourly=temperature_2m,weathercode&forecast_hours=4&timezone=auto`);
-                const weatherData = await weatherRes.json();
-
-                const cityName = geoData.city || "deiner Umgebung";
-                let html = `<strong>Wetter in ${cityName}:</strong><div class="weather-hours">`;
-
-                for (let i = 1; i <= 3; i++) {
-                    const timeString = new Date(weatherData.hourly.time[i]).getHours() + ":00";
-                    const temp = Math.round(weatherData.hourly.temperature_2m[i]);
-                    const code = weatherData.hourly.weathercode[i];
-
-                    let icon = '☀️';
-                    if (code > 1) icon = '⛅';
-                    if (code > 3) icon = '☁️';
-                    if (code > 45) icon = '🌫️';
-                    if (code > 50) icon = '🌧️';
-                    if (code > 70) icon = '🌨️';
-                    if (code > 90) icon = '⛈️';
-
-                    html += `<div class="weather-hour">
-                        <strong>${timeString}</strong><br>
-                        <span style="font-size: 20px;">${icon}</span><br>
-                        ${temp}°C
-                    </div>`;
-                }
-
-                html += `</div>`;
-                weatherDiv.innerHTML = html;
-
-            } catch (error) {
-                console.error("Wetter-Fehler:", error);
-                weatherDiv.innerHTML = "Lokales Wetter aktuell nicht verfügbar.";
-            }
+                const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 30000);
+                const r = await fetch(url, {method:'POST', body:'data=' + encodeURIComponent(q), signal:ctl.signal,
+                    headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+                clearTimeout(to);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const j = await r.json(); osrv = (osrv + i) % OVERPASS.length;
+                try { sessionStorage.setItem(key, JSON.stringify(j)); } catch(e) {}
+                return j;
+            } catch(e) { err = e; }
         }
-        loadLocalWeather();
+        throw err;
+    }
 
-        // --- OVERPASS: direkt aus dem Browser (Nutzer-IP), mit Fallback-Servern ---
-        async function fetchOverpass(query, cacheKey) {
-            try {
-                const cached = sessionStorage.getItem(cacheKey);
-                if (cached) return JSON.parse(cached);
-            } catch (e) {}
+    // ---------- Aufbereitung ----------
+    const polyContains = (pts, x, y) => { let c = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++)
+            if ((pts[i][1] > y) !== (pts[j][1] > y) && x < (pts[j][0]-pts[i][0]) * (y-pts[i][1]) / (pts[j][1]-pts[i][1]) + pts[i][0]) c = !c;
+        return c; };
 
-            const urls = [...OVERPASS_URLS].sort(() => Math.random() - 0.5);
-            const errors = [];
-
-            for (let round = 0; round < 2; round++) {
-                for (const url of urls) {
-                    const host = new URL(url).host;
-                    statusText.textContent = `Lade Daten von ${host}...`;
-                    const controller = new AbortController();
-                    const timer = setTimeout(() => controller.abort(), 20000);
-                    try {
-                        const res = await fetch(url, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-                            body: "data=" + encodeURIComponent(query),
-                            signal: controller.signal
-                        });
-                        clearTimeout(timer);
-                        if (res.ok) {
-                            const data = await res.json();
-                            try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
-                            return data;
-                        }
-                        errors.push(`${host}: HTTP ${res.status}`);
-                    } catch (e) {
-                        clearTimeout(timer);
-                        errors.push(`${host}: ${e.name}`);
-                    }
-                }
-                await new Promise(r => setTimeout(r, 2000));
-            }
-            console.warn("Overpass-Fehler:", errors);
-            throw new Error("Overpass gerade überlastet, bitte in einer Minute erneut versuchen.");
-        }
-
-        // --- UI ---
-        function showRetry() {
-            locateBtn.style.display = 'inline-block';
-            locateBtn.disabled = false;
-            locateBtn.textContent = "🔄 Erneut versuchen";
-        }
-
-        locateBtn.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                statusText.textContent = "Geolokalisierung wird nicht unterstützt.";
-                return;
-            }
-
-            statusText.textContent = "Standort wird ermittelt...";
-            locateBtn.disabled = true;
-
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-
-                    statusText.textContent = "Standort gefunden! Lade Daten...";
-                    locateBtn.style.display = 'none';
-                    mapContainer.style.display = 'block';
-
-                    // Alte Karte/Marker entfernen (bei erneutem Versuch)
-                    markers.forEach(m => m.remove());
-                    markers = [];
-                    if (map) { map.remove(); map = null; }
-
-                    map = new mapboxgl.Map({
-                        container: 'map',
-                        style: 'mapbox://styles/mapbox/streets-v12',
-                        center: [lon, lat],
-                        zoom: 15
-                    });
-
-                    markers.push(
-                        new mapboxgl.Marker({ color: '#e74c3c' })
-                            .setLngLat([lon, lat])
-                            .addTo(map)
-                    );
-
-                    try {
-                        await fetchSunCafes(lat, lon);
-                    } catch (e) {
-                        console.error(e);
-                        statusText.textContent = "Fehler: " + e.message;
-                        showRetry();
-                    }
-                },
-                (error) => {
-                    console.error("Fehler bei der Ortung:", error);
-                    statusText.textContent = "Fehler bei der Standortabfrage.";
-                    locateBtn.disabled = false;
-                }
-            );
+    function buildCafes(data, lat0, lng0) {
+        const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 111320;
+        const bl = data.elements.filter(e => e.type === 'way' && e.tags && e.tags.building && e.geometry).map(e => {
+            const t = e.tags;
+            const h = t.height ? (parseFloat(String(t.height).replace('m','').trim()) || 15) : t['building:levels'] ? (parseFloat(t['building:levels']) || 5) * 3 : 15;
+            return {h, g:e.geometry};
         });
-
-        async function fetchSunCafes(lat, lon) {
-            const overpassQuery = `
-                [out:json][timeout:25];
-                (
-                  node["amenity"="cafe"](around:${RADIUS},${lat},${lon});
-                  node["shop"="bakery"](around:${RADIUS},${lat},${lon});
-                )->.c;
-                .c out body;
-                way["building"](around.c:${BUILDING_RADIUS});
-                out tags geom qt;
-            `;
-
-            statusText.textContent = "Lade Gebäude- und Café-Daten...";
-            const cacheKey = "osm_" + lat.toFixed(3) + "_" + lon.toFixed(3) + "_" + RADIUS + "_" + BUILDING_RADIUS;
-            const osmData = await fetchOverpass(overpassQuery, cacheKey);
-
-            // Filtern
-            const cafes = [];
-            const buildings = [];
-            const badChains = ["der mann", "aida", "felber", "ströck", "stroeck", "anker", "unbekannt", "tchibo"];
-
-            osmData.elements.forEach(el => {
-                if (el.type === "node" && el.tags && (el.tags.amenity === "cafe" || el.tags.shop === "bakery")) {
-                    const name = el.tags.name || "Unbekannt";
-                    if (!badChains.some(chain => name.toLowerCase().includes(chain))) {
-                        cafes.push({ id: el.id, name: name, lat: el.lat, lon: el.lon });
-                    }
-                } else if (el.type === "way" && el.tags && el.tags.building) {
-                    if (el.geometry && el.geometry.length >= 3) {
-                        const coords = el.geometry.map(pt => [pt.lon, pt.lat]);
-                        let height = 15.0;
-                        if (el.tags.height) {
-                            height = parseFloat(String(el.tags.height).replace("m", "").trim()) || 15.0;
-                        } else if (el.tags["building:levels"]) {
-                            height = (parseFloat(el.tags["building:levels"]) || 5) * 3.0;
-                        }
-                        buildings.push({ coords: coords, height: height });
-                    }
-                }
-            });
-
-            if (cafes.length === 0) {
-                statusText.textContent = "Leider keine passenden Cafés im Umkreis gefunden.";
-                showRetry();
-                return;
+        return data.elements.filter(e => e.tags && (e.tags.amenity === 'cafe' || e.tags.shop === 'bakery') && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k))).map(e => {
+            const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
+            if (lat == null) return null;
+            const loc = [];
+            for (const b of bl) {
+                const pts = b.g.map(p => [(p.lon - lng) * kx, (p.lat - lat) * ky]);
+                if (!pts.some(p => Math.abs(p[0]) < SHADOW_REACH && Math.abs(p[1]) < SHADOW_REACH)) continue;
+                if (polyContains(pts, 0, 0)) continue; // eigenes Gebäude wirft keinen Schatten auf die Terrasse
+                loc.push({h:b.h, pts});
             }
+            let oh = null; const raw = e.tags.opening_hours;
+            if (raw) { try { oh = new opening_hours(raw, {lat, lon:lng, address:{country_code:'at'}}, {locale:'de'}); } catch(x) { oh = null; } }
+            const dm = Math.hypot((lng - lng0) * kx, (lat - lat0) * ky);
+            return {id:String(e.id), name:e.tags.name || 'Café ohne Namen', lat, lng, loc, oh, raw, dist:dm,
+                outdoor:e.tags.outdoor_seating, addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
+        }).filter(Boolean);
+    }
 
-            // Schattenberechnung im Backend
-            statusText.textContent = `Berechne Schatten für ${cafes.length} Cafés (Server wacht ggf. gerade auf)...`;
-
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 90000);
-            const mathResponse = await fetch(`${BACKEND_URL}/api/calculate_shadows`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lat: lat, lon: lon, cafes: cafes, buildings: buildings }),
-                signal: controller.signal
-            });
-            clearTimeout(timer);
-            if (!mathResponse.ok) throw new Error("Schatten-Berechnung Fehler " + mathResponse.status);
-            const mathData = await mathResponse.json();
-
-            // Marker zeichnen
-            let sunCount = 0;
-            mathData.cafes.forEach(cafe => {
-                const markerColor = cafe.in_sun ? '#f39c12' : '#2980b9';
-                if (cafe.in_sun) sunCount++;
-
-                const v_jetzt = cafe.vorhersage.jetzt ? '☀️' : '☁️';
-                const v_1h = cafe.vorhersage.in_1h ? '☀️' : '☁️';
-                const v_2h = cafe.vorhersage.in_2h ? '☀️' : '☁️';
-
-                const popupContent = `<div style="padding-right: 20px; font-weight: bold; font-size: 14px; color: #333;">
-                    ${cafe.name}<br>
-                    <span style="font-size: 12px; font-weight: normal; color: ${cafe.in_sun ? '#d35400' : '#2980b9'};">
-                        Jetzt: ${v_jetzt} ${cafe.in_sun ? 'In der Sonne' : 'Im Schatten'}
-                    </span><br>
-                    <div style="margin-top: 5px; font-size: 12px; font-weight: normal; color: #555; background: #eee; padding: 4px; border-radius: 4px;">
-                        Vorschau:<br>
-                        In 1 Std: ${v_1h} &nbsp;|&nbsp; In 2 Std: ${v_2h}
-                    </div>
-                </div>`;
-
-                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent);
-
-                markers.push(
-                    new mapboxgl.Marker({ color: markerColor })
-                        .setLngLat([cafe.lon, cafe.lat])
-                        .setPopup(popup)
-                        .addTo(map)
-                );
-            });
-
-            statusText.textContent = `${mathData.cafes.length} Cafés gefunden (${sunCount} in der Sonne).`;
+    // ---------- Rechnung ----------
+    function inShade(c, alt, az) { // az: Kompass, Richtung zur Sonne
+        const dx = Math.sin(az), dy = Math.cos(az), ta = Math.tan(Math.max(alt, 0.5 * Math.PI / 180));
+        for (const b of c.loc) {
+            const reach = Math.min(b.h / ta, SHADOW_REACH), p = b.pts;
+            for (let i = 0; i < p.length - 1; i++) {
+                const ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], den = dx * ey - dy * ex;
+                if (Math.abs(den) < 1e-9) continue;
+                const t = (p[i][0] * ey - p[i][1] * ex) / den, u = (p[i][0] * dy - p[i][1] * dx) / den;
+                if (u >= 0 && u <= 1 && t > 0.05 && t <= reach) return true;
+            }
         }
-    </script>
+        return false;
+    }
+
+    function openInfo(c, d) {
+        if (!c.oh) return {o:-1, text:'Öffnungszeiten unbekannt'};
+        try {
+            const next = c.oh.getNextChange(d), nt = next ? (next.toDateString() === d.toDateString() ? fmtT(next) : fmtD(next)) : null;
+            if (c.oh.getUnknown(d)) return {o:-1, text:'Öffnungszeiten unklar' + (c.raw ? ': ' + c.raw : '')};
+            if (c.oh.getState(d)) return {o:1, text:'Geöffnet' + (nt ? ', schließt ' + nt : '')};
+            return {o:0, text:'Geschlossen' + (nt ? ', öffnet ' + nt : '')};
+        } catch(e) { return {o:-1, text:'Öffnungszeiten unlesbar'}; }
+    }
+
+    // ---------- Anzeige ----------
+    function update() {
+        if (!mapReady || !t0) return;
+        const d = curTime(), s = d.getTime() === t0.getTime();
+        $('tlabel').textContent = s ? 'Jetzt' : fmtD(d);
+        const sp = SunCalc.getPosition(d, place.lat, place.lng), alt = sp.altitude, az = sp.azimuth + Math.PI;
+        const night = alt < MIN_ALT;
+        $('sunstate').textContent = night ? 'Sonne unter dem Horizont' : 'Sonnenhöhe ' + Math.round(alt * 180 / Math.PI) + '°';
+        showWx(d);
+        const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
+        const rows = [];
+        for (const c of cafes) {
+            c.state = night ? 'night' : (inShade(c, alt, az) ? 'shade' : 'sun');
+            c.info = openInfo(c, d);
+            if (onlyOpen && c.info.o === 0) continue;
+            if (onlySun && c.state !== 'sun') continue;
+            rows.push(c);
+        }
+        map.getSource('cafes').setData({type:'FeatureCollection', features:rows.map(c => ({type:'Feature',
+                geometry:{type:'Point', coordinates:[c.lng, c.lat]}, properties:{id:c.id, s:c.state, o:c.info.o}}))});
+        rows.sort((a, b) => a.dist - b.dist);
+        const L = $('list'); L.innerHTML = '';
+        for (const c of rows.slice(0, 80)) {
+            const li = document.createElement('li'); li.tabIndex = 0;
+            li.className = c.info.o === 0 ? 'closed' : '';
+            li.innerHTML = `<span class="dot ${c.state}${c.info.o === -1 ? ' unk' : ''}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="dist">${c.dist < 1000 ? Math.round(c.dist) + ' m' : (c.dist/1000).toFixed(1) + ' km'}</span>`;
+            li.querySelector('.nm').textContent = c.name;
+            li.querySelector('.sub').textContent = stateText(c) + ' · ' + c.info.text;
+            const go = () => { map.flyTo({center:[c.lng, c.lat], zoom:Math.max(map.getZoom(), 16.5)}); openPopup(c.id); };
+            li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
+            L.appendChild(li);
+        }
+        $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '');
+        if (popup && popup._cid) openPopup(popup._cid);
+    }
+    const stateText = c => ({sun:'Sonne', shade:'Schatten', night:'Nacht'})[c.state];
+
+    function openPopup(id) {
+        const c = cafes.find(x => x.id === id); if (!c) return;
+        if (popup) popup.remove();
+        const out = c.outdoor === 'yes' ? 'Außenplätze: ja' : c.outdoor === 'no' ? 'Außenplätze: nein' : 'Außenplätze: unbekannt';
+        const el = document.createElement('div'), b = document.createElement('b');
+        b.textContent = c.name; el.appendChild(b);
+        [stateText(c) + ' (Gebäudeschatten, Näherung)', c.info.text, out, c.addr].filter(Boolean).forEach(t => {
+            const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
+        popup = new maplibregl.Popup({closeButton:true, closeOnClick:false, offset:12}).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
+        popup._cid = id;
+        popup.on('close', () => { if (popup && popup._cid === id) popup._cid = null; });
+    }
+
+    // ---------- Wetter ----------
+    async function loadWx(lat, lng) {
+        wx = null;
+        try {
+            const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,cloud_cover&forecast_days=3&timezone=auto`);
+            const j = await r.json(); wx = {t0:new Date(j.hourly.time[0]), T:j.hourly.temperature_2m, C:j.hourly.cloud_cover};
+        } catch(e) {}
+        showWx(curTime());
+    }
+    function showWx(d) {
+        if (!wx) { $('wx').textContent = 'Wetter nicht verfügbar'; return; }
+        const i = Math.round((d - wx.t0) / 3600000);
+        $('wx').textContent = wx.T[i] == null ? '' : `${Math.round(wx.T[i])} °C · Bewölkung ${wx.C[i]} %`;
+    }
+
+    // ---------- Ort setzen ----------
+    async function setPlace(lat, lng, move = true) {
+        place = {lat, lng};
+        if (popup) { popup.remove(); popup = null; }
+        map.getSource('center').setData({type:'Point', coordinates:[lng, lat]});
+        if (move) map.flyTo({center:[lng, lat], zoom:Math.max(map.getZoom(), 15.5)});
+        $('status').textContent = 'Lade Cafés und Gebäude …'; $('list').innerHTML = '';
+        loadWx(lat, lng);
+        const now = new Date(); now.setMinutes(Math.floor(now.getMinutes() / STEP_MIN) * STEP_MIN, 0, 0); t0 = now;
+        $('slider').value = 0;
+        try {
+            const rl = +lat.toFixed(3), rg = +lng.toFixed(3);
+            cafes = buildCafes(await fetchOverpass(rl, rg), lat, lng);
+            update();
+            if (!cafes.length) $('status').textContent = 'Keine Cafés im Umkreis von 1 km gefunden.';
+        } catch(e) {
+            cafes = []; map.getSource('cafes').setData({type:'FeatureCollection', features:[]});
+            $('status').textContent = 'Daten konnten nicht geladen werden (Overpass überlastet). Bitte später erneut tippen.';
+        }
+    }
+
+    // ---------- Bedienung ----------
+    let raf = 0;
+    $('slider').addEventListener('input', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); });
+    $('fopen').onchange = $('fsun').onchange = update;
+    $('loc').onclick = () => navigator.geolocation
+        ? navigator.geolocation.getCurrentPosition(p => setPlace(p.coords.latitude, p.coords.longitude), () => $('status').textContent = 'Standort nicht verfügbar.')
+        : null;
+    $('q').addEventListener('keydown', async e => {
+        if (e.key !== 'Enter') return;
+        const q = e.target.value.trim(); if (!q) return;
+        const key = 'nom:' + q.toLowerCase();
+        let hit = null;
+        try { hit = JSON.parse(localStorage.getItem(key)); } catch(x) {}
+        if (!hit) {
+            if (Date.now() - lastNom < 1100) return; lastNom = Date.now();
+            try {
+                const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+                const j = await r.json(); if (j[0]) { hit = {lat:+j[0].lat, lng:+j[0].lon};
+                    try { localStorage.setItem(key, JSON.stringify(hit)); } catch(x) {} }
+            } catch(x) {}
+        }
+        if (hit) setPlace(hit.lat, hit.lng); else $('status').textContent = 'Adresse nicht gefunden.';
+    });
+</script>
 </body>
 </html>
