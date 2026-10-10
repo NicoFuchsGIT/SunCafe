@@ -34,11 +34,9 @@
         li:hover{background:var(--card)}
         .dot{width:14px;height:14px;border-radius:50%;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
         .dot.sun{background:var(--sun)}.dot.shade{background:var(--shade)}.dot.night{background:#b8c0cc}
-        .dot.unk{border-color:var(--ink)}
         li.closed{opacity:.5}
         .nm{font-weight:600;font-size:15px}.sub{font-size:12.5px;color:var(--mute)}
         .dist{margin-left:auto;font-size:12.5px;color:var(--mute);white-space:nowrap}
-        #legend{padding:8px 16px calc(8px + env(safe-area-inset-bottom));font-size:11.5px;color:var(--mute);border-top:1px solid var(--line)}
         .maplibregl-popup-content{font-family:inherit;color:#14213d;padding:12px 14px;min-width:200px}
         .maplibregl-popup-content b{font-size:15px}
         .maplibregl-popup-content p{margin:4px 0 0;font-size:13px}
@@ -58,7 +56,6 @@
             <div id="wx">Wetter wird geladen …</div>
             <div class="row">
                 <input id="q" type="search" placeholder="Adresse suchen, Enter drücken" aria-label="Adresse suchen">
-                <button id="loc" title="Mein Standort">Standort</button>
             </div>
         </header>
         <div id="time">
@@ -71,7 +68,6 @@
         </div>
         <div id="status">Karte antippen oder Adresse suchen, um Cafés zu laden.</div>
         <ul id="list"></ul>
-        <div id="legend">Gelb: Sonne · Grau: Schatten · Hellgrau: Nacht · Blasser Eintrag: geschlossen · Dunkler Rand: Öffnungszeiten unbekannt (bei „Geöffnet“ trotzdem sichtbar). Daten © OpenStreetMap contributors</div>
     </aside>
     <div id="map"></div>
 </div>
@@ -86,8 +82,7 @@
     const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
     const WIEN = {lat: 48.2082, lng: 16.3738};
     const OVERPASS = ['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
-    const CAFE_RADIUS = 1000, BUILD_RADIUS = 120,SHADOW_CAFES = 30, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
-    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const CAFE_RADIUS = 1000, BUILD_AREA = 500, CALC_RADIUS = 300, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 150, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
     // ---------- Zustand ----------
     let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0;
@@ -100,6 +95,9 @@
     const map = new maplibregl.Map({container:'map', style:STYLE_URL, center:[place.lng, place.lat], zoom:15.5, attributionControl:false});
     map.addControl(new maplibregl.AttributionControl({compact:true, customAttribution:'© OpenStreetMap contributors'}));
     map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right');
+    const geo = new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true}, trackUserLocation:false, showUserLocation:false});
+    map.addControl(geo, 'top-right');
+    geo.on('geolocate', p => setPlace(p.coords.latitude, p.coords.longitude, false));
     map.on('load', () => {
         map.addSource('cafes', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
         map.addSource('center', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
@@ -108,8 +106,8 @@
                 'circle-radius':['interpolate',['linear'],['zoom'],12,5,16,10],
                 'circle-color':['match',['get','s'],'sun','#ffb703','shade','#6c7a89','#b8c0cc'],
                 'circle-opacity':['case',['==',['get','o'],0],0.4,1],
-                'circle-stroke-width':2,
-                'circle-stroke-color':['match',['get','o'],-1,'#14213d','#ffffff']}});
+                'circle-stroke-width':1.5,
+                'circle-stroke-color':'#ffffff'}});
         map.on('click', 'cafes', e => { e.originalEvent.cafe = true; openPopup(e.features[0].properties.id); });
         map.on('click', e => { if (!e.originalEvent.cafe) setPlace(e.lngLat.lat, e.lngLat.lng); });
         map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
@@ -144,10 +142,8 @@
         const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
         return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a});out body center;`, `sc:c:${lat},${lng}`, 20000);
     };
-    const fetchBuildings = (list, lat, lng) => {
-        const parts = list.map(c => `way["building"](around:${BUILD_RADIUS},${c.lat.toFixed(5)},${c.lng.toFixed(5)});`).join('');
-        return overpass(`[out:json][timeout:40];(${parts});out tags geom qt;`, `sc:b:${lat},${lng}:${list.length}`, 45000);
-    };
+    const fetchBuildings = (lat, lng) =>
+    overpass(`[out:json][timeout:40];way["building"](around:${BUILD_AREA},${lat},${lng});out tags geom qt;`, `sc:b:${lat},${lng}`, 45000);
 
     // ---------- Aufbereitung ----------
     const polyContains = (pts, x, y) => { let c = false;
@@ -243,8 +239,7 @@
             li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
             L.appendChild(li);
         }
-        $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '');
-        if (popup && popup._cid) openPopup(popup._cid);
+            $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '') + (cafes.some(c => !c.calc) ? ' · Schatten im Umkreis von 300 m' : '');        if (popup && popup._cid) openPopup(popup._cid);
     }
     const stateText = c => ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
     function openPopup(id) {
@@ -297,24 +292,21 @@
         }
         update();
         if (!cafes.length) { $('status').textContent = 'Keine Cafés im Umkreis von 1 km gefunden.'; return; }
-        try {
-            const near = [...cafes].sort((a, b) => a.dist - b.dist).slice(0, SHADOW_CAFES);
-            const data = await fetchBuildings(near, rl, rg);
-            if (place !== mine) return;
-            attachBuildings(near, data);
-            update();
-        } catch(e) {
-            if (place === mine) $('status').textContent += ' · Schatten nicht verfügbar (Gebäudedaten konnten nicht geladen werden)';
-        }
+          try {
+              const near = cafes.filter(c => c.dist <= CALC_RADIUS);
+              const data = await fetchBuildings(rl, rg);
+              if (place !== mine) return;
+              attachBuildings(near, data);
+              update();
+          } catch(e) {
+              if (place === mine) $('status').textContent += ' · Schatten derzeit nicht verfügbar';
+          }
     }
 
     // ---------- Bedienung ----------
     let raf = 0;
     $('slider').addEventListener('input', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); });
     $('fopen').onchange = $('fsun').onchange = update;
-    $('loc').onclick = () => navigator.geolocation
-        ? navigator.geolocation.getCurrentPosition(p => setPlace(p.coords.latitude, p.coords.longitude), () => $('status').textContent = 'Standort nicht verfügbar.')
-        : null;
     $('q').addEventListener('keydown', async e => {
         if (e.key !== 'Enter') return;
         const q = e.target.value.trim(); if (!q) return;
