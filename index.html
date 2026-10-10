@@ -81,7 +81,8 @@
     // ---------- Einstellungen ----------
     const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
     const WIEN = {lat: 48.2082, lng: 16.3738};
-    const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];    const CAFE_RADIUS = 1000, BUILD_AREA = 500, CALC_RADIUS = 300, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
+    const CAFE_RADIUS = 1000, BUILD_AREA = 500, CALC_RADIUS = 300, RINGS = [300, 600, 1050], STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
     // ---------- Zustand ----------
     let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0;
@@ -152,22 +153,30 @@
         return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a});out body center;`, `sc:c:${lat},${lng}`, 20000);
     };
 
-    // ---------- Gebäude aus den Kartenkacheln ----------
-    function whenIdle() {
-        return new Promise(res => {
-            const t = setTimeout(res, 8000), done = () => { clearTimeout(t); res(); };
-            if (map.loaded() && !map.isMoving()) done(); else map.once('idle', done);
-        });
-    }
-    function tileBuildings() {
-        const srcs = map.getStyle().sources, src = Object.keys(srcs).find(k => srcs[k].type === 'vector');
-        const feats = src ? map.querySourceFeatures(src, {sourceLayer:'building'}) : [];
-        const els = [];
+    // ---------- Gebäude aus Kartenkacheln (unsichtbare Zweitkarte) ----------
+    let bmap = null;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    async function loadBuildings(lat, lng) {
+        if (!bmap) {
+            const div = document.createElement('div');
+            div.style.cssText = 'position:fixed;left:-9999px;top:0;width:1100px;height:1100px';
+            document.body.appendChild(div);
+            bmap = new maplibregl.Map({container:div, style:STYLE_URL, center:[lng, lat], zoom:15, interactive:false, attributionControl:false, fadeDuration:0});
+            await new Promise(r => bmap.once('load', r));
+        } else { bmap.jumpTo({center:[lng, lat], zoom:15}); await sleep(300); }
+        if (!bmap.loaded()) await Promise.race([new Promise(r => bmap.once('idle', r)), sleep(10000)]);
+        const srcs = bmap.getStyle().sources, src = Object.keys(srcs).find(k => srcs[k].type === 'vector');
+        const feats = src ? bmap.querySourceFeatures(src, {sourceLayer:'building'}) : [];
+        const seen = new Set(), els = [];
         for (const f of feats) {
             const g = f.geometry; if (!g) continue;
             const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-            const rh = +f.properties.render_height, h = rh > 5 ? rh : 15; // unbekannte Höhe: 15 m wie bisher
-            for (const poly of polys) els.push({type:'way', tags:{building:'yes', height:String(h)}, geometry:poly[0].map(c => ({lat:c[1], lon:c[0]}))});
+            const rh = +f.properties.render_height, h = rh > 5 ? rh : 15; // unbekannte Höhe: 15 m
+            for (const poly of polys) {
+                const ring = poly[0], key = ring[0][0].toFixed(6) + ',' + ring[0][1].toFixed(6) + ',' + ring.length;
+                if (seen.has(key)) continue; seen.add(key);
+                els.push({type:'way', tags:{building:'yes', height:String(h)}, geometry:ring.map(c => ({lat:c[1], lon:c[0]}))});
+            }
         }
         return {elements:els};
     }
@@ -201,6 +210,7 @@
             const kx = 111320 * Math.cos(c.lat * Math.PI / 180), ky = 111320;
             c.loc = [];
             for (const b of bl) {
+                if (Math.abs((b.g[0].lon - c.lng) * kx) > SHADOW_REACH + 150 || Math.abs((b.g[0].lat - c.lat) * ky) > SHADOW_REACH + 150) continue;
                 const pts = b.g.map(p => [(p.lon - c.lng) * kx, (p.lat - c.lat) * ky]);
                 if (!pts.some(p => Math.abs(p[0]) < SHADOW_REACH && Math.abs(p[1]) < SHADOW_REACH)) continue;
                 if (polyContains(pts, 0, 0)) continue; // eigenes Gebäude wirft keinen Schatten auf die Terrasse
@@ -266,7 +276,7 @@
             li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
             L.appendChild(li);
         }
-            $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '') + (cafes.some(c => !c.calc) ? ' · Schatten im Umkreis von 300 m' : '');        if (popup && popup._cid) openPopup(popup._cid);
+            $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '') + (cafes.some(c => !c.calc) ? ' · Schatten wird berechnet ...' : '');        if (popup && popup._cid) openPopup(popup._cid);
     }
     const stateText = c => ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
     function openPopup(id) {
@@ -320,13 +330,15 @@
         update();
         if (!cafes.length) { $('status').textContent = 'Keine Cafés im Umkreis von 1 km gefunden.'; return; }
         try {
-            await whenIdle();
+            const data = await loadBuildings(lat, lng);
             if (place !== mine) return;
-            const near = cafes.filter(c => c.dist <= CALC_RADIUS);
-            const data = tileBuildings();
             if (!data.elements.length) throw new Error('keine Gebäude');
-            attachBuildings(near, data);
-            update();
+            for (const r of RINGS) {
+                attachBuildings(cafes.filter(c => !c.calc && c.dist <= r), data);
+                update();
+                await sleep(30);
+                if (place !== mine) return;
+            }
             $('status').textContent += ` · ${data.elements.length} Gebäude`;
         } catch(e) {
             if (place === mine) $('status').textContent += ' · Schatten derzeit nicht verfügbar';
