@@ -82,7 +82,7 @@
     const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
     const WIEN = {lat: 48.2082, lng: 16.3738};
     const OVERPASS = ['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
-    const CAFE_RADIUS = 1000, BUILD_AREA = 500, CALC_RADIUS = 300, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 150, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const CAFE_RADIUS = 1000, BUILD_AREA = 500, CALC_RADIUS = 300, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
     // ---------- Zustand ----------
     let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0;
@@ -142,8 +142,26 @@
         const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
         return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a});out body center;`, `sc:c:${lat},${lng}`, 20000);
     };
-    const fetchBuildings = (lat, lng) =>
-    overpass(`[out:json][timeout:40];way["building"](around:${BUILD_AREA},${lat},${lng});out tags geom qt;`, `sc:b:${lat},${lng}`, 45000);
+
+    // ---------- Gebäude aus den Kartenkacheln ----------
+    function whenIdle() {
+        return new Promise(res => {
+            const t = setTimeout(res, 8000), done = () => { clearTimeout(t); res(); };
+            if (map.loaded() && !map.isMoving()) done(); else map.once('idle', done);
+        });
+    }
+    function tileBuildings() {
+        const srcs = map.getStyle().sources, src = Object.keys(srcs).find(k => srcs[k].type === 'vector');
+        const feats = src ? map.querySourceFeatures(src, {sourceLayer:'building'}) : [];
+        const els = [];
+        for (const f of feats) {
+            const g = f.geometry; if (!g) continue;
+            const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+            const rh = +f.properties.render_height, h = rh > 5 ? rh : 15; // unbekannte Höhe: 15 m wie bisher
+            for (const poly of polys) els.push({type:'way', tags:{building:'yes', height:String(h)}, geometry:poly[0].map(c => ({lat:c[1], lon:c[0]}))});
+        }
+        return {elements:els};
+    }
 
     // ---------- Aufbereitung ----------
     const polyContains = (pts, x, y) => { let c = false;
@@ -292,15 +310,18 @@
         }
         update();
         if (!cafes.length) { $('status').textContent = 'Keine Cafés im Umkreis von 1 km gefunden.'; return; }
-          try {
-              const near = cafes.filter(c => c.dist <= CALC_RADIUS);
-              const data = await fetchBuildings(rl, rg);
-              if (place !== mine) return;
-              attachBuildings(near, data);
-              update();
-          } catch(e) {
-              if (place === mine) $('status').textContent += ' · Schatten derzeit nicht verfügbar';
-          }
+        try {
+            await whenIdle();
+            if (place !== mine) return;
+            const near = cafes.filter(c => c.dist <= CALC_RADIUS);
+            const data = tileBuildings();
+            if (!data.elements.length) throw new Error('keine Gebäude');
+            attachBuildings(near, data);
+            update();
+            $('status').textContent += ` · ${data.elements.length} Gebäude`;
+        } catch(e) {
+            if (place === mine) $('status').textContent += ' · Schatten derzeit nicht verfügbar';
+        }
     }
 
     // ---------- Bedienung ----------
