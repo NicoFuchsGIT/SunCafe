@@ -1,5 +1,2 @@
 {
-  "functions": {
-    "api/overpass.js": { "maxDuration": 30 }
-  }
 }
