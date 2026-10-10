@@ -81,8 +81,7 @@
     // ---------- Einstellungen ----------
     const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
     const WIEN = {lat: 48.2082, lng: 16.3738};
-    const OVERPASS = ['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
-    const CAFE_RADIUS = 1000, BUILD_AREA = 500, CALC_RADIUS = 300, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];    const CAFE_RADIUS = 1000, BUILD_AREA = 500, CALC_RADIUS = 300, STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];    const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
     // ---------- Zustand ----------
     let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0;
@@ -120,24 +119,34 @@
     // ---------- Daten laden (Overpass, Cache, Rotation) ----------
     async function overpass(q, key, ms) {
         try { const c = sessionStorage.getItem(key); if (c) return JSON.parse(c); } catch(e) {}
-        let err;
-        for (let i = 0; i < OVERPASS.length * 2; i++) {
-            if (i === OVERPASS.length) await new Promise(r => setTimeout(r, 2000));
-            const url = OVERPASS[(osrv + i) % OVERPASS.length];
-            $('status').textContent = 'Lade Daten von ' + new URL(url).host + ' …';
+        const ask = async (url, init) => {
+            const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
             try {
-                const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
-                const r = await fetch(url, {method:'POST', body:'data=' + encodeURIComponent(q), signal:ctl.signal,
-                    headers:{'Content-Type':'application/x-www-form-urlencoded'}});
-                clearTimeout(to);
+                const r = await fetch(url, {...init, signal:ctl.signal});
                 if (!r.ok) throw new Error('HTTP ' + r.status);
-                const j = await r.json(); osrv = (osrv + i) % OVERPASS.length;
-                try { sessionStorage.setItem(key, JSON.stringify(j)); } catch(e) {}
-                return j;
-            } catch(e) { err = e; }
+                return await r.json();
+            } finally { clearTimeout(to); }
+        };
+        let j, err;
+        try {
+            $('status').textContent = 'Lade Cafés …';
+            j = await ask('/api/overpass?data=' + encodeURIComponent(q));
+        } catch(e) {
+            err = e;
+            for (let i = 0; i < OVERPASS.length && !j; i++) {
+                const url = OVERPASS[(osrv + i) % OVERPASS.length];
+                $('status').textContent = 'Lade Daten von ' + new URL(url).host + ' …';
+                try {
+                    j = await ask(url, {method:'POST', body:'data=' + encodeURIComponent(q), headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+                    osrv = (osrv + i) % OVERPASS.length;
+                } catch(x) { err = x; }
+            }
         }
-        throw err;
+        if (!j) throw err;
+        try { sessionStorage.setItem(key, JSON.stringify(j)); } catch(e) {}
+        return j;
     }
+
     const fetchCafes = (lat, lng) => {
         const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
         return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a});out body center;`, `sc:c:${lat},${lng}`, 20000);
