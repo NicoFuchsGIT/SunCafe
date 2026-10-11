@@ -40,7 +40,7 @@ li.closed{opacity:.5}
 }
 
 /* Info-Dialog */
-h1 .info-btn{width:22px;height:22px;padding:0;margin-left:6px;border-radius:50%;font-size:13px;font-weight:600;font-style:italic;line-height:1;vertical-align:middle}
+h1 .info-btn{width:22px;height:22px;padding:0;margin-left:6px;border-radius:50%;font-size:13px;font-weight:600;font-style:normal;line-height:1;vertical-align:middle}
 dialog#info{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);overflow:auto}
 dialog#info::backdrop{background:rgba(10,15,25,.5)}
 .info-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:14px 20px 8px;background:var(--card)}
@@ -55,7 +55,16 @@ dialog#info::backdrop{background:rgba(10,15,25,.5)}
 #info li:hover{background:none}
 #info .dot{display:inline-block;vertical-align:-2px;margin-right:8px}
 
-/* Route-Links im Popup */
-.popup-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.popup-actions a{padding:7px 12px;border:1px solid #dde3ea;border-radius:8px;font-size:13px;color:#14213d;text-decoration:none}
-.popup-actions a.primary{background:#ffb703;border-color:#ffb703;font-weight:600}
+/* Neues Maps-Icon oben rechts im Popup */
+.gmaps-icon {
+    position: absolute;
+    top: 12px;
+    right: 36px; /* Platziert es links neben dem Schließen-X */
+    font-size: 16px;
+    text-decoration: none;
+    color: var(--mute);
+    transition: color 0.2s;
+}
+.gmaps-icon:hover {
+    color: var(--sun);
+}

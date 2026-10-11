@@ -2,7 +2,7 @@
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
 const WIEN = {lat: 48.2082, lng: 16.3738};
 const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
-const CAFE_RADIUS = 1000, RINGS = [300, 600, 1050], STEP_MIN = 30, TERRACE_OFFSET = 4, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
+const CAFE_RADIUS = 1000, RINGS = [300, 600, 1050], STEP_MIN = 30, TERRACE_OFFSET = 4, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];
 const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
 // ---------- Zustand ----------
@@ -298,22 +298,27 @@ function openPopup(id) {
     if (popup) popup.remove();
     const out = c.outdoor === 'yes' ? 'Außenplätze: ja' : c.outdoor === 'no' ? 'Außenplätze: nein' : 'Außenplätze: unbekannt';
     const sides = c.res && c.state !== 'night' ? c.pts.map((p, i) => `${p.label}: ${c.res[i] ? 'Schatten' : 'Sonne'}${p.enclosed ? ' (Innenhof möglich)' : ''}`) : [];
-    const el = document.createElement('div'), b = document.createElement('b');
+    const dest = c.lat + ',' + c.lng;
+    const view = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.addr ? `${c.name}, ${c.addr}` : `${c.name} ${dest}`);
+
+    const el = document.createElement('div');
+
+    // Kleines Google Maps Icon oben rechts
+    const gmapsLink = document.createElement('a');
+    gmapsLink.href = view;
+    gmapsLink.target = '_blank';
+    gmapsLink.rel = 'noopener';
+    gmapsLink.className = 'gmaps-icon';
+    gmapsLink.title = 'In Google Maps ansehen';
+    gmapsLink.innerHTML = '📍'; // Du kannst auch '🗺️' oder ein SVG einfügen
+    el.appendChild(gmapsLink);
+
+    const b = document.createElement('b');
     b.textContent = c.name; el.appendChild(b);
+
     [stateText(c) + (c.calc ? ' (Gebäudeschatten, Näherung)' : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
         const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
-    const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const dest = c.lat + ',' + c.lng;
-    const route = isApple ? `https://maps.apple.com/?daddr=${dest}&dirflg=w`
-                          : `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=walking`;
-    const view = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.addr ? `${c.name}, ${c.addr}` : `${c.name} ${dest}`);
-    const act = document.createElement('div'); act.className = 'popup-actions';
-    for (const [txt, href, primary] of [['Route', route, true], ['In Google Maps ansehen', view, false]]) {
-        const l = document.createElement('a'); l.textContent = txt; l.href = href; l.target = '_blank'; l.rel = 'noopener';
-        if (primary) l.className = 'primary';
-        act.appendChild(l);
-    }
-    el.appendChild(act);
+
     popup = new maplibregl.Popup({closeButton:true, closeOnClick:false, offset:12}).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
     popup._cid = id;
     showTerr(c);
