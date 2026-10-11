@@ -46,7 +46,7 @@ jobs:
           fetch "[out:json][timeout:120];(nwr[\"amenity\"~\"^(bar|pub|restaurant)$\"]$B;);out body center;" /tmp/b.json 300 || { echo "Bars/Restaurants konnten nicht geladen werden"; exit 1; }
 
           # Zusammenführen und auf die Felder kürzen, die die App braucht (spart rund 70 % Größe)
-          jq -c -s '{elements: [ (.[0].elements + .[1].elements + .[2].elements)[]
+          jq -c -s '{elements: [ (.[0].elements + .[1].elements + .[2].elements | unique_by([.type, .id]))[]
               | {type, id, lat, lon, center,
                  tags: ((.tags // {}) | {name: .name, amenity: .amenity, shop: .shop, leisure: .leisure,
                         opening_hours: .opening_hours, outdoor_seating: .outdoor_seating,
@@ -55,6 +55,16 @@ jobs:
               | with_entries(select(.value != null)) ]}' /tmp/a.json /tmp/t.json /tmp/b.json > /tmp/out.json
 
           jq -e '.elements | length > 1000' /tmp/out.json > /dev/null || { echo "Ergebnis zu klein, Datei wird nicht überschrieben"; exit 1; }
+          # Vergleich mit der bisherigen Datei: deutlich weniger Einträge deuten auf einen unvollständigen Abruf hin
+          if [ -f data/wien.json ]; then
+            old=$(jq '.elements | length' data/wien.json 2>/dev/null || echo 0)
+            new=$(jq '.elements | length' /tmp/out.json)
+            echo "Bisher: $old Einträge, neu: $new Einträge"
+            if [ "${old:-0}" -gt 0 ] && [ "$new" -lt $((old * 7 / 10)) ]; then
+              echo "Neue Datei hat weniger als 70 % der bisherigen Einträge, alte Datei bleibt bestehen"
+              exit 1
+            fi
+          fi
           mv /tmp/out.json data/wien.json
           ls -l data/wien.json
 

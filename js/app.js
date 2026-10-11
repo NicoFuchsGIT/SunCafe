@@ -116,7 +116,7 @@ const fetchCafes = async (lat, lng) => {
                 const r = await fetch('data/wien.json');
                 if (!r.ok) throw new Error(`HTTP Error ${r.status}`);
                 wienCache = await r.json();
-                if (!wienCache || !wienCache.elements) throw new Error('Datei enthält keine validen Elemente');
+                if (!wienCache || !wienCache.elements || wienCache.elements.length < 100) throw new Error('Datei enthält keine validen Elemente');
             }
 
             // Filtern der Daten auf den aktuellen 1km-Radius
@@ -492,7 +492,9 @@ $('slider').addEventListener('input', () => { cancelAnimationFrame(raf); raf = r
 $('fopen').onchange = $('fsun').onchange = update;
 // Lädt die Karte neu, sobald das Dropdown geändert wird
 $('ptype').addEventListener('change', () => {
-    if (mapReady && t0) setPlace(place.lat, place.lng, false); // false = Kamera nicht bewegen
+    if (!mapReady || !t0) return;
+    cafes = []; // Liste leeren, sonst bleiben Orte der vorherigen Kategorie stehen
+    setPlace(place.lat, place.lng, false);
 });
 $('q').addEventListener('keydown', async e => {
     if (e.key !== 'Enter') return;
