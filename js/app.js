@@ -101,8 +101,6 @@ async function overpass(q, key, ms) {
     return j;
 }
 
-let wienCache = null; // Speichert die wien.json im Arbeitsspeicher, sobald sie einmal geladen wurde
-
 let wienCache = null;
 
 const fetchCafes = async (lat, lng) => {
