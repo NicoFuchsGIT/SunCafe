@@ -1,0 +1,28 @@
+name: Update Wien Daten
+on:
+  schedule:
+    - cron: '0 3 1,15 * *' # Jeden 1. und 15. im Monat um 03:00 Uhr
+  workflow_dispatch: # Erlaubt dir, das Update auf GitHub auch manuell per Knopfdruck zu starten
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Overpass Daten für Wien abrufen
+        run: |
+          mkdir -p data
+          # Holt alle Cafés, Bars, Pubs, Restaurants und Sitzbereiche im 6km Radius
+          curl -g -X POST "https://overpass-api.de/api/interpreter" \
+          --data-urlencode 'data=[out:json][timeout:60];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:6000,48.2082,16.3738);nwr["shop"="bakery"](around:6000,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:6000,48.2082,16.3738););out body center;' \
+          -o data/wien.json
+
+      - name: Änderungen committen und pushen
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/wien.json
+          # Committet nur, wenn sich die Daten wirklich geändert haben
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: Update wien.json von Overpass" && git push)
