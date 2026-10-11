@@ -103,13 +103,14 @@ async function overpass(q, key, ms) {
 
 let wienCache = null;
 
+const range = 5000;
 const fetchCafes = async (lat, lng) => {
     const distToZentrum = Math.hypot((lng - 16.3738) * 111320 * Math.cos(lat * Math.PI / 180), (lat - 48.2082) * 111320);
     const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
     const v = $('ptype') ?$('ptype').value : 'cafe';
 
     // 1. Versuch: Der Wien-Turbo
-    if (distToZentrum < 8000) {
+    if (distToZentrum < range) {
         try {
             if (!wienCache) {
                 const r = await fetch('data/wien.json');

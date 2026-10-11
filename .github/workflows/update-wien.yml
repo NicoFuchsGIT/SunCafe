@@ -13,13 +13,13 @@ jobs:
 
       - name: Overpass Daten für Wien abrufen
         run: |
-          mkdir -p data
-          # Radius auf 8000 Meter (8 km) gesetzt - der Sweetspot für Performance
-          curl -g -X POST "https://overpass-api.de/api/interpreter" \
-          -H "User-Agent: SunCafe-Bot/1.0 (https://github.com/nicofu2510/SunCafe)" \
-          -H "Accept: application/json" \
-          --data-urlencode 'data=[out:json][timeout:300];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:8000,48.2082,16.3738);nwr["shop"="bakery"](around:8000,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:8000,48.2082,16.3738););out body center;' \
-          -o data/wien.json
+            mkdir -p data
+            # Wir nutzen den schnelleren LZ4-Mirror und einen extrem stabilen 5km Radius
+            curl -g -X POST "https://lz4.overpass-api.de/api/interpreter" \
+            -H "User-Agent: SunCafe-Bot/1.0 (https://github.com/nicofu2510/SunCafe)" \
+            -H "Accept: application/json" \
+            --data-urlencode 'data=[out:json][timeout:300];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:5000,48.2082,16.3738);nwr["shop"="bakery"](around:5000,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:5000,48.2082,16.3738););out body center;' \
+            -o data/wien.json
 
       - name: JSON auf Gültigkeit prüfen (Schutz vor kaputten Dateien)
         run: |
