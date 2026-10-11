@@ -103,33 +103,41 @@ async function overpass(q, key, ms) {
 
 let wienCache = null; // Speichert die wien.json im Arbeitsspeicher, sobald sie einmal geladen wurde
 
+let wienCache = null;
+
 const fetchCafes = async (lat, lng) => {
-    // 1. Prüfen, ob der gesuchte Ort im 6km-Radius des vorgerenderten Wiens liegt
-    const range = 13500;
     const distToZentrum = Math.hypot((lng - 16.3738) * 111320 * Math.cos(lat * Math.PI / 180), (lat - 48.2082) * 111320);
-
-    if (distToZentrum < range) {
-        if (!wienCache) {
-            const r = await fetch('data/wien.json');
-            wienCache = await r.json();
-        }
-
-        // Wir filtern die riesige Wien-Datei exakt auf den aktuellen 1km Suchradius des Nutzers
-        return {
-            elements: wienCache.elements.filter(e => {
-                const elLat = e.lat ?? e.center?.lat;
-                const elLng = e.lon ?? e.center?.lon;
-                if (!elLat) return false;
-                const d = Math.hypot((elLng - lng) * 111320 * Math.cos(lat * Math.PI / 180), (elLat - lat) * 111320);
-                return d <= CAFE_RADIUS;
-            })
-        };
-    }
-
-    // 2. Fallback: Der Nutzer ist außerhalb von Wien (z. B. in Graz). Dann live über Overpass!
     const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
     const v = $('ptype') ?$('ptype').value : 'cafe';
 
+    // 1. Versuch: Der Wien-Turbo
+    if (distToZentrum < 13500) {
+        try {
+            if (!wienCache) {
+                const r = await fetch('data/wien.json');
+                if (!r.ok) throw new Error(`HTTP Error ${r.status}`);
+                wienCache = await r.json();
+                if (!wienCache || !wienCache.elements) throw new Error('Datei enthält keine validen Elemente');
+            }
+
+            // Filtern der Daten auf den aktuellen 1km-Radius
+            return {
+                elements: wienCache.elements.filter(e => {
+                    const elLat = e.lat ?? e.center?.lat;
+                    const elLng = e.lon ?? e.center?.lon;
+                    if (!elLat) return false;
+                    const d = Math.hypot((elLng - lng) * 111320 * Math.cos(lat * Math.PI / 180), (elLat - lat) * 111320);
+                    return d <= CAFE_RADIUS;
+                })
+            };
+        } catch (err) {
+            console.warn("Turbo fehlgeschlagen, lade live:", err.message);
+            wienCache = null; // Cache leeren, falls die Datei kaputt war
+            // Die Funktion bricht hier nicht ab, sondern rutscht automatisch zum Live-Fallback durch!
+        }
+    }
+
+    // 2. Live-Fallback: Greift außerhalb von Wien ODER wenn wien.json einen Fehler wirft
     let q = `nwr["amenity"="cafe"]${a}nwr["shop"="bakery"]${a}`;
     if (v === 'bar' || v === 'rest') q += `nwr["amenity"="bar"]${a}nwr["amenity"="pub"]${a}`;
     if (v === 'rest') q += `nwr["amenity"="restaurant"]${a}`;
