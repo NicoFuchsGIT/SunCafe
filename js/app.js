@@ -19,6 +19,7 @@ map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right
 const geo = new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true}, trackUserLocation:false, showUserLocation:false});
 map.addControl(geo, 'top-right');
 geo.on('geolocate', p => setPlace(p.coords.latitude, p.coords.longitude, false));
+
 // Neuer Knopf: Suchen an der aktuellen Kartenmitte
 class SearchCenterControl {
     onAdd(map) {
@@ -26,12 +27,21 @@ class SearchCenterControl {
         this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.title = 'Hier suchen';
-        btn.innerHTML = '📍'; // Ein Pin als Icon
+        btn.title = 'Ort manuell wählen';
+        btn.innerHTML = '📍';
         btn.style.fontSize = '16px';
         btn.onclick = () => {
-            const c = map.getCenter();
-            setPlace(c.lat, c.lng); // Sucht genau in der Mitte deines Bildschirms
+            // 1. Fadenkreuz & Bestätigen-Button einblenden
+            $('center-marker').classList.remove('hidden-ui');
+            $('confirm-place-btn').classList.remove('hidden-ui');
+
+            // 2. Liste einklappen, falls sie offen ist
+            const appDiv = $('app');
+            if (!appDiv.classList.contains('collapsed')) {
+                appDiv.classList.add('collapsed');
+                updateSidebarIcon(true);
+                setTimeout(() => map.resize(), 50);
+            }
         };
         this._container.appendChild(btn);
         return this._container;
@@ -39,6 +49,7 @@ class SearchCenterControl {
     onRemove() { this._container.remove(); }
 }
 map.addControl(new SearchCenterControl(), 'top-right');
+
 map.on('load', () => {
     map.addSource('cafes', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
     map.addSource('center', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
@@ -351,7 +362,7 @@ function openPopup(id) {
     gmapsLink.rel = 'noopener';
     gmapsLink.className = 'gmaps-icon';
     gmapsLink.title = 'In Google Maps ansehen';
-    gmapsLink.innerHTML = '📍'; // Du kannst auch '🗺️' oder ein SVG einfügen
+    gmapsLink.innerHTML = '🗺️'; // Du kannst auch '🗺️' oder ein SVG einfügen
     el.appendChild(gmapsLink);
 
     const b = document.createElement('b');
@@ -451,19 +462,42 @@ $('info-btn').onclick = () => info.showModal();
 info.querySelector('.info-x').onclick = () => info.close();
 info.addEventListener('click', e => { if (e.target === info) info.close(); }); // Klick auf den Hintergrund schließt
 
-// ---------- Sidebar Toggle Logik ----------
+// ---------- Sidebar & Auswahl-Logik ----------
+
+// Hilfsfunktion, um die Pfeile richtig zu setzen
+function updateSidebarIcon(isCollapsed) {
+    if (window.innerWidth <= 760) {
+        $('ts-icon').textContent = isCollapsed ? '▲' : '▼';
+    } else {
+        $('ts-icon').textContent = isCollapsed ? '▶' : '◀';
+    }
+}
+
+// Manueller Klick auf den "Liste"-Button
 $('toggle-sidebar').onclick = () => {
     const appDiv = $('app');
     appDiv.classList.toggle('collapsed');
-    const isCollapsed = appDiv.classList.contains('collapsed');
-
-    // Pfeil je nach Gerät und Zustand anpassen
-    if (window.innerWidth <= 760) {
-        $('ts-icon').textContent = isCollapsed ? '▲' : '▼'; // Auf dem Handy ist die Liste unten
-    } else {
-        $('ts-icon').textContent = isCollapsed ? '▶' : '◀'; // Auf dem PC ist die Liste links
-    }
-
-    // Wichtig: MapLibre sagen, dass der Bildschirm nun größer/kleiner ist!
+    updateSidebarIcon(appDiv.classList.contains('collapsed'));
     setTimeout(() => map.resize(), 50);
+};
+
+// Klick auf "✅ Hier suchen"
+$('confirm-place-btn').onclick = () => {
+    // 1. Die exakte Mitte der Karte auslesen
+    const c = map.getCenter();
+
+    // 2. UI wieder verstecken
+    $('center-marker').classList.add('hidden-ui');
+    $('confirm-place-btn').classList.add('hidden-ui');
+
+    // 3. Liste wieder ausklappen
+    const appDiv = $('app');
+    appDiv.classList.remove('collapsed');
+    updateSidebarIcon(false);
+
+    // 4. Karte anpassen und suchen!
+    setTimeout(() => {
+        map.resize();
+        setPlace(c.lat, c.lng); // Löst die Suche am neuen Ort aus
+    }, 50);
 };
