@@ -109,7 +109,7 @@ const fetchCafes = async (lat, lng) => {
     const v = $('ptype') ?$('ptype').value : 'cafe';
 
     // 1. Versuch: Der Wien-Turbo
-    if (distToZentrum < 13500) {
+    if (distToZentrum < 8000) {
         try {
             if (!wienCache) {
                 const r = await fetch('data/wien.json');

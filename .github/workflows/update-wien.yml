@@ -14,17 +14,14 @@ jobs:
       - name: Overpass Daten für Wien abrufen
         run: |
           mkdir -p data
-          # Holt alle Cafés, Bars, Pubs, Restaurants und Sitzbereiche im 6km Radius
+          # Radius auf 8000 Meter (8 km) gesetzt - der Sweetspot für Performance
           curl -g -X POST "https://overpass-api.de/api/interpreter" \
           -H "User-Agent: SunCafe-Bot/1.0 (https://github.com/nicofu2510/SunCafe)" \
           -H "Accept: application/json" \
-          --data-urlencode 'data=[out:json][timeout:300][maxsize:1073741824];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:13500,48.2082,16.3738);nwr["shop"="bakery"](around:13500,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:13500,48.2082,16.3738););out body center;' \
+          --data-urlencode 'data=[out:json][timeout:300];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:8000,48.2082,16.3738);nwr["shop"="bakery"](around:8000,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:8000,48.2082,16.3738););out body center;' \
           -o data/wien.json
 
-      - name: Änderungen committen und pushen
+      - name: JSON auf Gültigkeit prüfen (Schutz vor kaputten Dateien)
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/wien.json
-          # Committet nur, wenn sich die Daten wirklich geändert haben
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: Update wien.json von Overpass" && git push)
+          # 'jq empty' prüft, ob die Datei echtes JSON ist. Wenn es XML ist, bricht das Skript hier ab!
+          jq empty data/wien.json
