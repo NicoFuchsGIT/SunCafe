@@ -101,22 +101,39 @@ async function overpass(q, key, ms) {
     return j;
 }
 
-const fetchCafes = (lat, lng) => {
+let wienCache = null; // Speichert die wien.json im Arbeitsspeicher, sobald sie einmal geladen wurde
+
+const fetchCafes = async (lat, lng) => {
+    // 1. Prüfen, ob der gesuchte Ort im 6km-Radius des vorgerenderten Wiens liegt
+    const distToZentrum = Math.hypot((lng - 16.3738) * 111320 * Math.cos(lat * Math.PI / 180), (lat - 48.2082) * 111320);
+
+    if (distToZentrum < 6000) {
+        if (!wienCache) {
+            const r = await fetch('data/wien.json');
+            wienCache = await r.json();
+        }
+
+        // Wir filtern die riesige Wien-Datei exakt auf den aktuellen 1km Suchradius des Nutzers
+        return {
+            elements: wienCache.elements.filter(e => {
+                const elLat = e.lat ?? e.center?.lat;
+                const elLng = e.lon ?? e.center?.lon;
+                if (!elLat) return false;
+                const d = Math.hypot((elLng - lng) * 111320 * Math.cos(lat * Math.PI / 180), (elLat - lat) * 111320);
+                return d <= CAFE_RADIUS;
+            })
+        };
+    }
+
+    // 2. Fallback: Der Nutzer ist außerhalb von Wien (z. B. in Graz). Dann live über Overpass!
     const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
-    const v = $('ptype').value;
+    const v = $('ptype') ?$('ptype').value : 'cafe';
 
-    // Basis-Suche: Cafés und Bäckereien
     let q = `nwr["amenity"="cafe"]${a}nwr["shop"="bakery"]${a}`;
-
-    // Wenn "Bars" oder "Alles" ausgewählt ist:
     if (v === 'bar' || v === 'rest') q += `nwr["amenity"="bar"]${a}nwr["amenity"="pub"]${a}`;
-
-    // Wenn "Alles" ausgewählt ist:
     if (v === 'rest') q += `nwr["amenity"="restaurant"]${a}`;
-
     q += `nwr["leisure"="outdoor_seating"]${a}`;
 
-    // Der Cache-Schlüssel enthält jetzt "v", damit beim Zurückschalten nichts neu geladen werden muss
     return overpass(`[out:json][timeout:25];(${q});out body center;`, `sc:c2:${v}:${lat},${lng}`, 25000);
 };
 
