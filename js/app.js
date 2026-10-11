@@ -105,9 +105,10 @@ let wienCache = null; // Speichert die wien.json im Arbeitsspeicher, sobald sie 
 
 const fetchCafes = async (lat, lng) => {
     // 1. Prüfen, ob der gesuchte Ort im 6km-Radius des vorgerenderten Wiens liegt
+    const range = 13500;
     const distToZentrum = Math.hypot((lng - 16.3738) * 111320 * Math.cos(lat * Math.PI / 180), (lat - 48.2082) * 111320);
 
-    if (distToZentrum < 6000) {
+    if (distToZentrum < range) {
         if (!wienCache) {
             const r = await fetch('data/wien.json');
             wienCache = await r.json();
