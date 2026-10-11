@@ -16,9 +16,7 @@ jobs:
           mkdir -p data
           # Holt alle Cafés, Bars, Pubs, Restaurants und Sitzbereiche im 6km Radius
           curl -g -X POST "https://overpass-api.de/api/interpreter" \
-          -H "User-Agent: SunCafe-Bot/1.0 (https://github.com/nicofu2510/SunCafe)" \
-          -H "Accept: application/json" \
-          --data-urlencode 'data=[out:json][timeout:300][maxsize:1073741824];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:13500,48.2082,16.3738);nwr["shop"="bakery"](around:13500,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:13500,48.2082,16.3738););out body center;' \
+          --data-urlencode 'data=[out:json][timeout:60];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:13500,48.2082,16.3738);nwr["shop"="bakery"](around:6000,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:6000,48.2082,16.3738););out body center;' \
           -o data/wien.json
 
       - name: Änderungen committen und pushen
