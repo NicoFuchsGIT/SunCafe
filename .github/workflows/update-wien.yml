@@ -1,8 +1,12 @@
 name: Update Wien Daten
+
 on:
   schedule:
-    - cron: '0 3 1,15 * *' # Jeden 1. und 15. im Monat um 03:00 Uhr
-  workflow_dispatch: # Erlaubt dir, das Update auf GitHub auch manuell per Knopfdruck zu starten
+    - cron: '0 3 1,15 * *' # am 1. und 15. jedes Monats um 03:00 UTC
+  workflow_dispatch: # manuell startbar im Reiter "Actions"
+
+permissions:
+  contents: write # nötig, damit der Workflow die Datei ins Repo zurückschreiben darf
 
 jobs:
   update-data:
@@ -11,17 +15,55 @@ jobs:
       - name: Repository auschecken
         uses: actions/checkout@v4
 
-      - name: Overpass Daten für Wien abrufen
+      - name: Overpass-Daten für Wien abrufen
         run: |
-            mkdir -p data
-            # Wir nutzen den schnelleren LZ4-Mirror und einen extrem stabilen 5km Radius
-            curl -g -X POST "https://lz4.overpass-api.de/api/interpreter" \
-            -H "User-Agent: SunCafe-Bot/1.0 (https://github.com/nicofu2510/SunCafe)" \
-            -H "Accept: application/json" \
-            --data-urlencode 'data=[out:json][timeout:300];(nwr["amenity"~"cafe|bar|pub|restaurant"](around:5000,48.2082,16.3738);nwr["shop"="bakery"](around:5000,48.2082,16.3738);nwr["leisure"="outdoor_seating"](around:5000,48.2082,16.3738););out body center;' \
-            -o data/wien.json
+          mkdir -p data
+          UA="SunCafe-Bot/1.0 (https://github.com/nicofu2510/SunCafe)"
+          SERVERS="https://overpass-api.de/api/interpreter https://lz4.overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter"
+          A='(around:6000,48.2082,16.3738)'
 
-      - name: JSON auf Gültigkeit prüfen (Schutz vor kaputten Dateien)
+          # Fragt alle Server reihum, bis eine gültige Antwort kommt (3 Runden).
+          # Gültig = echtes JSON, keine Overpass-Fehlermeldung ("remark"), genug Elemente.
+          fetch() { # $1 Query, $2 Ausgabedatei, $3 Mindestanzahl Elemente
+            for round in 1 2 3; do
+              for url in $SERVERS; do
+                echo "Runde $round: $url"
+                if curl -sS -f -m 240 -X POST "$url" -H "User-Agent: $UA" --data-urlencode "data=$1" -o "$2" \
+                   && jq -e --argjson n "$3" '(.remark // "") == "" and (.elements | length) > $n' "$2" > /dev/null 2>&1; then
+                  echo "OK: $(jq '.elements | length' "$2") Elemente"
+                  return 0
+                fi
+                sleep 5
+              done
+              sleep 60
+            done
+            return 1
+          }
+
+          fetch "[out:json][timeout:200];(nwr[\"amenity\"=\"cafe\"]$A;nwr[\"shop\"=\"bakery\"]$A;nwr[\"leisure\"=\"outdoor_seating\"]$A;);out body center;" /tmp/a.json 300 || { echo "Cafés konnten nicht geladen werden"; exit 1; }
+          fetch "[out:json][timeout:200];(nwr[\"amenity\"~\"^(bar|pub|restaurant)$\"]$A;);out body center;" /tmp/b.json 300 || { echo "Bars/Restaurants konnten nicht geladen werden"; exit 1; }
+
+          # Zusammenführen und auf die Felder kürzen, die die App braucht (spart rund 70 % Größe)
+          jq -c -s '{elements: [ (.[0].elements + .[1].elements)[]
+              | {type, id, lat, lon, center,
+                 tags: ((.tags // {}) | {name: .name, amenity: .amenity, shop: .shop, leisure: .leisure,
+                        opening_hours: .opening_hours, outdoor_seating: .outdoor_seating,
+                        "addr:street": .["addr:street"], "addr:housenumber": .["addr:housenumber"]}
+                        | with_entries(select(.value != null)))}
+              | with_entries(select(.value != null)) ]}' /tmp/a.json /tmp/b.json > /tmp/out.json
+
+          jq -e '.elements | length > 1000' /tmp/out.json > /dev/null || { echo "Ergebnis zu klein, Datei wird nicht überschrieben"; exit 1; }
+          mv /tmp/out.json data/wien.json
+          ls -l data/wien.json
+
+      - name: Datei ins Repo schreiben (nur bei Änderungen)
         run: |
-          # 'jq empty' prüft, ob die Datei echtes JSON ist. Wenn es XML ist, bricht das Skript hier ab!
-          jq empty data/wien.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/wien.json
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen"
+          else
+            git commit -m "Wien-Daten aktualisiert"
+            git push
+          fi
