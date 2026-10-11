@@ -6,13 +6,13 @@
     <title>SunCafe – Finde Sonnenplätze</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 <div id="app">
     <aside id="side">
         <header>
-            <h1>☀️ SunCafe</h1>
+            <h1>☀️ SunCafe <button id="info-btn" class="info-btn" aria-label="Infos zu SunCafe" aria-haspopup="dialog">i</button></h1>
             <div id="wx">Wetter wird geladen …</div>
             <div class="row">
                 <input id="q" type="search" placeholder="Adresse suchen, Enter drücken" aria-label="Adresse suchen">
@@ -32,11 +32,46 @@
     <div id="map"></div>
 </div>
 
+<dialog id="info" aria-labelledby="info-title">
+    <div class="info-head"><h2 id="info-title">Über SunCafe</h2><button class="info-x" aria-label="Schließen">×</button></div>
+    <div class="info-body">
+        <p>SunCafe zeigt Cafés und Bäckereien in deiner Nähe und schätzt, ob dort gerade die Sonne scheint. Mit dem Zeitschieber siehst du die Vorschau bis 48 Stunden.</p>
+
+        <h3>Farben</h3>
+        <p><span class="dot sun"></span>Sonne</p>
+        <p><span class="dot shade"></span>Schatten durch Gebäude</p>
+        <p><span class="dot night"></span>Nacht oder noch nicht berechnet</p>
+        <p>„Teils Sonne“ heißt: An einer Seite des Cafés scheint Sonne, an einer anderen nicht. Blasse Einträge sind geschlossen.</p>
+
+        <h3>So wird gerechnet</h3>
+        <ul>
+            <li>Sonnenstand aus Datum, Uhrzeit und Ort (SunCalc).</li>
+            <li>Schatten: Ein Strahl zur Sonne wird gegen die Gebäude der Karte geprüft. Fehlt die Höhe, gelten 15 m.</li>
+            <li>Position: Gibt es in OpenStreetMap eine Terrasse, wird sie benutzt. Sonst werden etwa 4 m vor der Hausfassade Punkte gesetzt, bei Eckhäusern an mehreren Seiten.</li>
+            <li>Öffnungszeiten stammen aus OpenStreetMap. Fehlen sie, steht „Öffnungszeiten unbekannt“.</li>
+        </ul>
+
+        <h3>Grenzen</h3>
+        <p>Das Ergebnis ist eine Näherung. Bäume, Schirme, Markisen, Wolken und genaue Gebäudehöhen sind nicht berücksichtigt. Bei Cafés in Innenhöfen ist die Position unsicher. Die Bewölkung wird nur angezeigt, nicht eingerechnet.</p>
+
+        <h3>Daten und Quellen</h3>
+        <ul>
+            <li>Cafés, Öffnungszeiten, Gebäude: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</li>
+            <li>Karte: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, dargestellt mit MapLibre</li>
+            <li>Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a></li>
+            <li>Adresssuche: Nominatim</li>
+        </ul>
+
+        <h3>Quellcode</h3>
+        <p>SunCafe ist ein Hobbyprojekt, der Code ist öffentlich: <a href="https://github.com/nicofu2510/SunCafe" target="_blank" rel="noopener">github.com/nicofu2510/SunCafe</a></p>
+    </div>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>window.maplibregl||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"><\/script>')</script>
 <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/i18next@21.10.0/dist/umd/i18next.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/opening_hours@3.8.0/build/opening_hours.js"></script>
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>

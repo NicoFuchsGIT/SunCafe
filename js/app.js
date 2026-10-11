@@ -382,3 +382,9 @@ $('q').addEventListener('keydown', async e => {
     }
     if (hit) setPlace(hit.lat, hit.lng); else $('status').textContent = 'Adresse nicht gefunden.';
 });
+
+// ---------- Info-Dialog ----------
+const info = $('info');
+$('info-btn').onclick = () => info.showModal();
+info.querySelector('.info-x').onclick = () => info.close();
+info.addEventListener('click', e => { if (e.target === info) info.close(); }); // Klick auf den Hintergrund schließt

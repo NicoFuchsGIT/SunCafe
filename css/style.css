@@ -38,3 +38,19 @@ li.closed{opacity:.5}
     #map{grid-row:1}#side{grid-row:2;border-right:0;border-top:1px solid var(--line)}
     header{padding-bottom:4px}.row{margin-top:6px}
 }
+
+/* Info-Dialog */
+h1 .info-btn{width:22px;height:22px;padding:0;margin-left:6px;border-radius:50%;font-size:13px;font-weight:600;font-style:italic;line-height:1;vertical-align:middle}
+dialog#info{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);overflow:auto}
+dialog#info::backdrop{background:rgba(10,15,25,.5)}
+.info-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:14px 20px 8px;background:var(--card)}
+.info-head h2{margin:0;font-size:18px}
+.info-x{padding:2px 10px;font-size:20px;line-height:1.2}
+.info-body{padding:0 20px 18px;font-size:14px;line-height:1.5}
+.info-body h3{margin:16px 0 4px;font-size:14px}
+.info-body p{margin:4px 0}
+.info-body a{color:var(--ink)}
+#info ul{display:block;flex:none;overflow:visible;margin:4px 0;padding:0 0 0 18px;list-style:disc}
+#info li{display:list-item;padding:2px 0;border:0;cursor:auto}
+#info li:hover{background:none}
+#info .dot{display:inline-block;vertical-align:-2px;margin-right:8px}
