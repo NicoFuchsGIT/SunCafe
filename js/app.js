@@ -2,7 +2,7 @@
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
 const WIEN = {lat: 48.2082, lng: 16.3738};
 const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
-const CAFE_RADIUS = 1000, RINGS = [300, 600, 1050], STEP_MIN = 30, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
+const CAFE_RADIUS = 1000, RINGS = [300, 600, 1050], STEP_MIN = 30, TERRACE_OFFSET = 4, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo'];
 const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 
 // ---------- Zustand ----------
@@ -29,6 +29,8 @@ map.on('load', () => {
             'circle-opacity':['case',['==',['get','o'],0],0.4,1],
             'circle-stroke-width':1.5,
             'circle-stroke-color':'#ffffff'}});
+    map.addSource('terr', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+    map.addLayer({id:'terr', type:'circle', source:'terr', paint:{'circle-radius':6, 'circle-color':['match',['get','s'],'sun','#ffb703','#6c7a89'], 'circle-stroke-width':2.5, 'circle-stroke-color':'#14213d'}});
     map.on('click', 'cafes', e => { e.originalEvent.cafe = true; openPopup(e.features[0].properties.id); });
     map.on('click', e => { if (!e.originalEvent.cafe) setPlace(e.lngLat.lat, e.lngLat.lng); });
     map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
@@ -71,7 +73,7 @@ async function overpass(q, key, ms) {
 
 const fetchCafes = (lat, lng) => {
     const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
-    return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a});out body center;`, `sc:c:${lat},${lng}`, 20000);
+    return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a}node["leisure"="outdoor_seating"]${a}way["leisure"="outdoor_seating"]${a});out body center;`, `sc:c2:${lat},${lng}`, 20000);
 };
 
 // ---------- Gebäude aus Kartenkacheln (unsichtbare Zweitkarte) ----------
@@ -110,15 +112,89 @@ const polyContains = (pts, x, y) => { let c = false;
 
 function parseCafes(data, lat0, lng0) {
     const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 111320;
-    return data.elements.filter(e => e.tags && (e.tags.amenity === 'cafe' || e.tags.shop === 'bakery') && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k))).map(e => {
+    const terr = data.elements.filter(e => e.tags && (e.tags.leisure === 'outdoor_seating' || e.tags.amenity === 'biergarten'))
+        .map(e => ({lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon})).filter(t => t.lat != null);
+    const list = data.elements.filter(e => e.tags && (e.tags.amenity === 'cafe' || e.tags.shop === 'bakery') && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k))).map(e => {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
         let oh = null; const raw = e.tags.opening_hours;
         if (raw) { try { oh = new opening_hours(raw, {lat, lon:lng, address:{country_code:'at'}}, {locale:'de'}); } catch(x) { oh = null; } }
-        return {id:String(e.id), name:e.tags.name || 'Café ohne Namen', lat, lng, loc:[], calc:false, oh, raw,
+        return {id:String(e.id), name:e.tags.name || 'Café ohne Namen', lat, lng, loc:[], calc:false, terr:[], oh, raw,
             dist:Math.hypot((lng - lng0) * kx, (lat - lat0) * ky), outdoor:e.tags.outdoor_seating,
             addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
     }).filter(Boolean);
+    for (const t of terr) { // OSM-Terrasse gehört zum nächsten Café innerhalb von 25 m
+        let best = null, bd = 25;
+        for (const c of list) { const d = Math.hypot((t.lng - c.lng) * kx, (t.lat - c.lat) * ky); if (d < bd) { bd = d; best = c; } }
+        if (best) best.terr.push(t);
+    }
+    return list;
+}
+
+// ---------- Terrassenposition ----------
+const SIDES = ['Nord','Nordost','Ost','Südost','Süd','Südwest','West','Nordwest'];
+const sideName = (nx, ny) => 'Seite ' + SIDES[(Math.round(Math.atan2(nx, ny) / (Math.PI / 4)) + 8) % 8];
+
+function segDist(p) { // kleinster Abstand des Café-Punkts (0,0) zum Gebäuderand
+    let m = Infinity;
+    for (let i = 0; i < p.length - 1; i++) {
+        const ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], l2 = ex * ex + ey * ey;
+        let s = l2 ? -(p[i][0] * ex + p[i][1] * ey) / l2 : 0; s = Math.max(0, Math.min(1, s));
+        m = Math.min(m, Math.hypot(p[i][0] + s * ex, p[i][1] + s * ey));
+    }
+    return m;
+}
+
+function rayHits(x, y, dx, dy, maxD, blds) {
+    for (const b of blds) {
+        const p = b.pts;
+        for (let i = 0; i < p.length - 1; i++) {
+            const ax = p[i][0] - x, ay = p[i][1] - y, ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], den = dx * ey - dy * ex;
+            if (Math.abs(den) < 1e-9) continue;
+            const t = (ax * ey - ay * ex) / den, u = (ax * dy - ay * dx) / den;
+            if (u >= 0 && u <= 1 && t > 0.05 && t <= maxD) return true;
+        }
+    }
+    return false;
+}
+
+function facadePoints(own, near, owns) {
+    const blds = near.concat(owns), p = own.pts, edges = [];
+    for (let i = 0; i < p.length - 1; i++) {
+        const ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], len = Math.hypot(ex, ey);
+        if (len < 3) continue;
+        let s = -(p[i][0] * ex + p[i][1] * ey) / (len * len); s = Math.max(0, Math.min(1, s));
+        const qx = p[i][0] + s * ex, qy = p[i][1] + s * ey;
+        let nx = ey / len, ny = -ex / len;
+        if (polyContains(p, qx + nx * 0.5, qy + ny * 0.5)) { nx = -nx; ny = -ny; } // Normale zeigt nach außen
+        edges.push({qx, qy, nx, ny, d: Math.hypot(qx, qy)});
+    }
+    edges.sort((a, b) => a.d - b.d);
+    const out = [];
+    for (const e of edges) {
+        if (e.d > edges[0].d + 25 || out.length >= 4) break;
+        if (out.some(o => o.nx * e.nx + o.ny * e.ny > 0.82)) continue; // fast gleiche Richtung: schon vorhanden
+        const x = e.qx + e.nx * TERRACE_OFFSET, y = e.qy + e.ny * TERRACE_OFFSET;
+        if (blds.some(b => polyContains(b.pts, x, y))) continue; // Nachbarhaus an dieser Wand
+        let hits = 0;
+        for (let k = 0; k < 8; k++) if (rayHits(x, y, Math.sin(k * Math.PI / 4), Math.cos(k * Math.PI / 4), 25, blds)) hits++;
+        out.push({x, y, nx: e.nx, ny: e.ny, label: sideName(e.nx, e.ny), enclosed: hits >= 7, kind: 'facade'});
+    }
+    const open = out.filter(o => !o.enclosed);
+    return open.length ? open : out;
+}
+
+function terracePoints(c, kx, ky) {
+    if (c.terr.length) return c.terr.map(t => ({x: (t.lng - c.lng) * kx, y: (t.lat - c.lat) * ky, label: 'Terrasse (OSM)', kind: 'osm'}));
+    if (c.owns.length) { const f = facadePoints(c.owns[0], c.near, c.owns); if (f.length) return f; }
+    return [{x: 0, y: 0, label: 'Position laut OSM', kind: 'point'}];
+}
+
+function showTerr(c) {
+    const kx = 111320 * Math.cos(c.lat * Math.PI / 180);
+    map.getSource('terr').setData({type:'FeatureCollection', features:(c.pts || []).map((p, i) => ({type:'Feature',
+        geometry:{type:'Point', coordinates:[c.lng + p.x / kx, c.lat + p.y / 111320]},
+        properties:{s: c.res && c.res[i] === false ? 'sun' : 'shade'}}))});
 }
 
 function attachBuildings(list, data) {
@@ -129,27 +205,33 @@ function attachBuildings(list, data) {
     });
     for (const c of list) {
         const kx = 111320 * Math.cos(c.lat * Math.PI / 180), ky = 111320;
-        c.loc = [];
+        c.loc = []; c.owns = [];
         for (const b of bl) {
             if (Math.abs((b.g[0].lon - c.lng) * kx) > SHADOW_REACH + 150 || Math.abs((b.g[0].lat - c.lat) * ky) > SHADOW_REACH + 150) continue;
             const pts = b.g.map(p => [(p.lon - c.lng) * kx, (p.lat - c.lat) * ky]);
             if (!pts.some(p => Math.abs(p[0]) < SHADOW_REACH && Math.abs(p[1]) < SHADOW_REACH)) continue;
-            if (polyContains(pts, 0, 0)) continue; // eigenes Gebäude wirft keinen Schatten auf die Terrasse
-            c.loc.push({h:b.h, pts});
+            if (polyContains(pts, 0, 0)) c.owns.push({h:b.h, pts, d:0}); // Gebäude des Cafés
+            else c.loc.push({h:b.h, pts, d:segDist(pts)});
         }
+        c.near = c.loc.filter(b => b.d < 45);
+        c.occ = c.loc.concat(c.owns); // das eigene Gebäude wirft Schatten auf die Terrasse
+        c.pts = terracePoints(c, kx, ky);
+        for (const pt of c.pts) pt.skip = c.near.concat(c.owns).filter(b => polyContains(b.pts, pt.x, pt.y));
         c.calc = true;
     }
 }
 
 // ---------- Rechnung ----------
-function inShade(c, alt, az) { // az: Kompass, Richtung zur Sonne
-    const dx = Math.sin(az), dy = Math.cos(az), ta = Math.tan(Math.max(alt, 0.5 * Math.PI / 180));
-    for (const b of c.loc) {
-        const reach = Math.min(b.h / ta, SHADOW_REACH), p = b.pts;
+function inShade(c, pt, alt, az) { // az: Kompass, Richtung zur Sonne; pt: Terrassenpunkt relativ zum Café
+    const dx = Math.sin(az), dy = Math.cos(az), ta = Math.tan(Math.max(alt, 0.5 * Math.PI / 180)), po = Math.hypot(pt.x, pt.y);
+    for (const b of c.occ) {
+        const reach = Math.min(b.h / ta, SHADOW_REACH);
+        if (b.d - po > reach || pt.skip.includes(b)) continue;
+        const p = b.pts;
         for (let i = 0; i < p.length - 1; i++) {
-            const ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], den = dx * ey - dy * ex;
+            const ax = p[i][0] - pt.x, ay = p[i][1] - pt.y, ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], den = dx * ey - dy * ex;
             if (Math.abs(den) < 1e-9) continue;
-            const t = (p[i][0] * ey - p[i][1] * ex) / den, u = (p[i][0] * dy - p[i][1] * dx) / den;
+            const t = (ax * ey - ay * ex) / den, u = (ax * dy - ay * dx) / den;
             if (u >= 0 && u <= 1 && t > 0.05 && t <= reach) return true;
         }
     }
@@ -179,10 +261,18 @@ function update() {
     const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
     const rows = [];
     for (const c of cafes) {
-        c.state = night ? 'night' : !c.calc ? 'pending' : (inShade(c, alt, az) ? 'shade' : 'sun');
+        if (night) c.state = 'night';
+        else if (!c.calc) c.state = 'pending';
+        else {
+            c.res = c.pts.map(p => inShade(c, p, alt, az));
+            const sunny = c.res.filter(x => !x).length;
+            c.state = sunny ? 'sun' : 'shade';
+            c.partial = sunny > 0 && sunny < c.res.length;
+            c.hof = c.pts.every(p => p.enclosed);
+        }
         c.info = openInfo(c, d);
         if (onlyOpen && c.info.o === 0) continue;
-        if (onlySun && c.state !== 'sun') continue;
+        if (onlySun && (c.state !== 'sun' || c.hof)) continue;
         rows.push(c);
     }
     map.getSource('cafes').setData({type:'FeatureCollection', features:rows.map(c => ({type:'Feature',
@@ -194,7 +284,7 @@ function update() {
         li.className = c.info.o === 0 ? 'closed' : '';
         li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="dist">${c.dist < 1000 ? Math.round(c.dist) + ' m' : (c.dist/1000).toFixed(1) + ' km'}</span>`;
         li.querySelector('.nm').textContent = c.name;
-        li.querySelector('.sub').textContent = stateText(c) + ' · ' + c.info.text;
+        li.querySelector('.sub').textContent = stateText(c) + (c.hof && c.state !== 'night' ? ' (Innenhof möglich)' : '') + ' · ' + c.info.text;
         const go = () => { map.flyTo({center:[c.lng, c.lat], zoom:Math.max(map.getZoom(), 16.5)}); openPopup(c.id); };
         li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
         L.appendChild(li);
@@ -202,18 +292,20 @@ function update() {
     $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '') + (cafes.some(c => !c.calc) ? ' · Schatten wird berechnet ...' : '');
     if (popup && popup._cid) openPopup(popup._cid);
 }
-const stateText = c => ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
+const stateText = c => c.state === 'sun' && c.partial ? 'Teils Sonne' : ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
 function openPopup(id) {
     const c = cafes.find(x => x.id === id); if (!c) return;
     if (popup) popup.remove();
     const out = c.outdoor === 'yes' ? 'Außenplätze: ja' : c.outdoor === 'no' ? 'Außenplätze: nein' : 'Außenplätze: unbekannt';
+    const sides = c.res && c.state !== 'night' ? c.pts.map((p, i) => `${p.label}: ${c.res[i] ? 'Schatten' : 'Sonne'}${p.enclosed ? ' (Innenhof möglich)' : ''}`) : [];
     const el = document.createElement('div'), b = document.createElement('b');
     b.textContent = c.name; el.appendChild(b);
-    [stateText(c) + (c.calc ? ' (Gebäudeschatten, Näherung)' : ''), c.info.text, out, c.addr].filter(Boolean).forEach(t => {
+    [stateText(c) + (c.calc ? ' (Gebäudeschatten, Näherung)' : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
         const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
     popup = new maplibregl.Popup({closeButton:true, closeOnClick:false, offset:12}).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
     popup._cid = id;
-    popup.on('close', () => { if (popup && popup._cid === id) popup._cid = null; });
+    showTerr(c);
+    popup.on('close', () => { if (popup && popup._cid === id) { popup._cid = null; map.getSource('terr').setData({type:'FeatureCollection', features:[]}); } });
 }
 
 // ---------- Wetter ----------
