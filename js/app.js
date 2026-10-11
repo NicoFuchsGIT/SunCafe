@@ -398,36 +398,66 @@ async function setPlace(lat, lng, move = true) {
     if (popup) { popup.remove(); popup = null; }
     map.getSource('center').setData({type:'Point', coordinates:[lng, lat]});
     if (move) map.flyTo({center:[lng, lat], zoom:Math.max(map.getZoom(), 15.5)});
-    $('status').textContent = 'Lade Cafés …'; $('list').innerHTML = '';
+
+    // 1. NEU: Distanzen der BEREITS GELADENEN Orte sofort aktualisieren
+    const kx = 111320 * Math.cos(lat * Math.PI / 180), ky = 111320;
+    for (const c of cafes) {
+        c.dist = Math.hypot((c.lng - lng) * kx, (c.lat - lat) * ky);
+    }
+
+    $('status').textContent = 'Lade neue Orte im Umkreis …';
     loadWx(lat, lng);
     const now = new Date(); now.setMinutes(Math.floor(now.getMinutes() / STEP_MIN) * STEP_MIN, 0, 0); t0 = now;
     $('slider').value = 0;
+
+    // Wir rufen sofort update() auf! Dadurch sortiert sich die Liste links sofort
+    // nach der neuen Distanz, noch bevor Overpass geantwortet hat.
+    update();
+
     const rl = +lat.toFixed(3), rg = +lng.toFixed(3);
     try {
         const list = parseCafes(await fetchCafes(rl, rg), lat, lng);
         if (place !== mine) return;
-        cafes = list;
+
+        // 2. NEU: Merge statt Überschreiben! Wir fügen nur Orte hinzu, die wir noch nicht kennen.
+        const existingIds = new Set(cafes.map(c => c.id));
+        let addedCount = 0;
+        for (const c of list) {
+            if (!existingIds.has(c.id)) {
+                cafes.push(c);
+                addedCount++;
+            }
+        }
+        console.log(`Cache: ${existingIds.size} Orte bekannt, ${addedCount} neu hinzugefügt.`);
     } catch(e) {
         if (place !== mine) return;
-        cafes = []; map.getSource('cafes').setData({type:'FeatureCollection', features:[]});
-        $('status').textContent = 'Cafés konnten nicht geladen werden (Overpass nicht erreichbar). Bitte später erneut tippen.';
+        if (cafes.length === 0) {
+            $('status').textContent = 'Orte konnten nicht geladen werden (Overpass nicht erreichbar).';
+        } else {
+            $('status').textContent = 'Fehler beim Nachladen. Zeige bisherige Orte.';
+        }
         return;
     }
+
+    // Zweites Update: Jetzt werden die alten + die neu geladenen Orte zusammen angezeigt
     update();
-    if (!cafes.length) { $('status').textContent = 'Keine Cafés im Umkreis von 1 km gefunden.'; return; }
+    if (!cafes.length) { $('status').textContent = 'Bisher keine Orte gefunden.'; return; }
+
     try {
+        // Gebäude für die Schattenberechnung nachladen
         const data = await loadBuildings(lat, lng);
         if (place !== mine) return;
         if (!data.elements.length) throw new Error('keine Gebäude');
         for (const r of RINGS) {
+            // Schatten wird nur für Orte berechnet, die ihn noch nicht haben (!c.calc)
             attachBuildings(cafes.filter(c => !c.calc && c.dist <= r), data);
             update();
             await sleep(30);
             if (place !== mine) return;
         }
-        $('status').textContent += ` · ${data.elements.length} Gebäude`;
+        $('status').textContent = `${cafes.length} Orte insgesamt im Speicher.`;
     } catch(e) {
-        if (place === mine) $('status').textContent += ' · Schatten derzeit nicht verfügbar';
+        if (place === mine) $('status').textContent = `${cafes.length} Orte · Schatten derzeit nicht verfügbar`;
     }
 }
 
