@@ -84,3 +84,38 @@ select:focus-visible {
     outline: 2px solid var(--sun);
     outline-offset: 2px;
 }
+
+/* Der neue Toggle-Button für die Liste */
+.map-overlay-btn {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    background: var(--card);
+    color: var(--ink);
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+    font-family: inherit;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+html.dark .map-overlay-btn { box-shadow: 0 0 0 1px var(--line); }
+
+/* Wenn die Liste eingeklappt ist */
+#app.collapsed #side {
+    display: none;
+}
+#app.collapsed {
+    grid-template-columns: 1fr !important;
+}
+@media(max-width:760px){
+    #app.collapsed {
+        grid-template-rows: 1fr !important; /* Gibt der Karte den vollen Platz auf Mobile */
+    }
+}

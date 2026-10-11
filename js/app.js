@@ -19,6 +19,26 @@ map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right
 const geo = new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true}, trackUserLocation:false, showUserLocation:false});
 map.addControl(geo, 'top-right');
 geo.on('geolocate', p => setPlace(p.coords.latitude, p.coords.longitude, false));
+// Neuer Knopf: Suchen an der aktuellen Kartenmitte
+class SearchCenterControl {
+    onAdd(map) {
+        this._container = document.createElement('div');
+        this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.title = 'Hier suchen';
+        btn.innerHTML = '📍'; // Ein Pin als Icon
+        btn.style.fontSize = '16px';
+        btn.onclick = () => {
+            const c = map.getCenter();
+            setPlace(c.lat, c.lng); // Sucht genau in der Mitte deines Bildschirms
+        };
+        this._container.appendChild(btn);
+        return this._container;
+    }
+    onRemove() { this._container.remove(); }
+}
+map.addControl(new SearchCenterControl(), 'top-right');
 map.on('load', () => {
     map.addSource('cafes', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
     map.addSource('center', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
@@ -31,8 +51,7 @@ map.on('load', () => {
             'circle-stroke-color':'#ffffff'}});
     map.addSource('terr', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
     map.addLayer({id:'terr', type:'circle', source:'terr', paint:{'circle-radius':6, 'circle-color':['match',['get','s'],'sun','#ffb703','#6c7a89'], 'circle-stroke-width':2.5, 'circle-stroke-color':'#14213d'}});
-    map.on('click', 'cafes', e => { e.originalEvent.cafe = true; openPopup(e.features[0].properties.id); });
-    map.on('click', e => { if (!e.originalEvent.cafe) setPlace(e.lngLat.lat, e.lngLat.lng); });
+    map.on('click', 'cafes', e => { openPopup(e.features[0].properties.id); });
     map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
     map.on('mouseleave','cafes',()=>map.getCanvas().style.cursor='');
     mapReady = true;
@@ -431,3 +450,20 @@ const info = $('info');
 $('info-btn').onclick = () => info.showModal();
 info.querySelector('.info-x').onclick = () => info.close();
 info.addEventListener('click', e => { if (e.target === info) info.close(); }); // Klick auf den Hintergrund schließt
+
+// ---------- Sidebar Toggle Logik ----------
+$('toggle-sidebar').onclick = () => {
+    const appDiv = $('app');
+    appDiv.classList.toggle('collapsed');
+    const isCollapsed = appDiv.classList.contains('collapsed');
+
+    // Pfeil je nach Gerät und Zustand anpassen
+    if (window.innerWidth <= 760) {
+        $('ts-icon').textContent = isCollapsed ? '▲' : '▼'; // Auf dem Handy ist die Liste unten
+    } else {
+        $('ts-icon').textContent = isCollapsed ? '▶' : '◀'; // Auf dem PC ist die Liste links
+    }
+
+    // Wichtig: MapLibre sagen, dass der Bildschirm nun größer/kleiner ist!
+    setTimeout(() => map.resize(), 50);
+};
