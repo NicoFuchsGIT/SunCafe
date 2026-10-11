@@ -54,3 +54,8 @@ dialog#info::backdrop{background:rgba(10,15,25,.5)}
 #info li{display:list-item;padding:2px 0;border:0;cursor:auto}
 #info li:hover{background:none}
 #info .dot{display:inline-block;vertical-align:-2px;margin-right:8px}
+
+/* Route-Links im Popup */
+.popup-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.popup-actions a{padding:7px 12px;border:1px solid #dde3ea;border-radius:8px;font-size:13px;color:#14213d;text-decoration:none}
+.popup-actions a.primary{background:#ffb703;border-color:#ffb703;font-weight:600}

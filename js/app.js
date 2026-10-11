@@ -302,6 +302,18 @@ function openPopup(id) {
     b.textContent = c.name; el.appendChild(b);
     [stateText(c) + (c.calc ? ' (Gebäudeschatten, Näherung)' : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
         const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
+    const isApple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const dest = c.lat + ',' + c.lng;
+    const route = isApple ? `https://maps.apple.com/?daddr=${dest}&dirflg=w`
+                          : `https://www.google.com/maps/dir/?api=1&destination=${dest}&travelmode=walking`;
+    const view = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.addr ? `${c.name}, ${c.addr}` : `${c.name} ${dest}`);
+    const act = document.createElement('div'); act.className = 'popup-actions';
+    for (const [txt, href, primary] of [['Route', route, true], ['In Google Maps ansehen', view, false]]) {
+        const l = document.createElement('a'); l.textContent = txt; l.href = href; l.target = '_blank'; l.rel = 'noopener';
+        if (primary) l.className = 'primary';
+        act.appendChild(l);
+    }
+    el.appendChild(act);
     popup = new maplibregl.Popup({closeButton:true, closeOnClick:false, offset:12}).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
     popup._cid = id;
     showTerr(c);
