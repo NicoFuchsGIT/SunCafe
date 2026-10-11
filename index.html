@@ -26,6 +26,13 @@
             <label><input type="checkbox" id="fopen"> Geöffnet</label>
             <label><input type="checkbox" id="fsun"> Nur Sonne</label>
         </div>
+        <div style="padding: 0 16px 12px; border-bottom: 1px solid var(--line);">
+            <select id="ptype" aria-label="Kategorie auswählen">
+                <option value="cafe">☕️ Nur Cafés & Bäckereien</option>
+                <option value="bar">🍻 Auch Bars & Pubs</option>
+                <option value="rest">🍽️ Alles (inkl. Restaurants)</option>
+            </select>
+        </div>
         <div id="status">Karte antippen oder Adresse suchen, um Cafés zu laden.</div>
         <ul id="list"></ul>
     </aside>

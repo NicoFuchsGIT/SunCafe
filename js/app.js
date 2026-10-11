@@ -73,7 +73,21 @@ async function overpass(q, key, ms) {
 
 const fetchCafes = (lat, lng) => {
     const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
-    return overpass(`[out:json][timeout:20];(node["amenity"="cafe"]${a}way["amenity"="cafe"]${a}node["shop"="bakery"]${a}node["leisure"="outdoor_seating"]${a}way["leisure"="outdoor_seating"]${a});out body center;`, `sc:c2:${lat},${lng}`, 20000);
+    const v = $('ptype').value;
+
+    // Basis-Suche: Cafés und Bäckereien
+    let q = `nwr["amenity"="cafe"]${a}nwr["shop"="bakery"]${a}`;
+
+    // Wenn "Bars" oder "Alles" ausgewählt ist:
+    if (v === 'bar' || v === 'rest') q += `nwr["amenity"="bar"]${a}nwr["amenity"="pub"]${a}`;
+
+    // Wenn "Alles" ausgewählt ist:
+    if (v === 'rest') q += `nwr["amenity"="restaurant"]${a}`;
+
+    q += `nwr["leisure"="outdoor_seating"]${a}`;
+
+    // Der Cache-Schlüssel enthält jetzt "v", damit beim Zurückschalten nichts neu geladen werden muss
+    return overpass(`[out:json][timeout:25];(${q});out body center;`, `sc:c2:${v}:${lat},${lng}`, 25000);
 };
 
 // ---------- Gebäude aus Kartenkacheln (unsichtbare Zweitkarte) ----------
@@ -114,7 +128,15 @@ function parseCafes(data, lat0, lng0) {
     const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 111320;
     const terr = data.elements.filter(e => e.tags && (e.tags.leisure === 'outdoor_seating' || e.tags.amenity === 'biergarten'))
         .map(e => ({lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon})).filter(t => t.lat != null);
-    const list = data.elements.filter(e => e.tags && (e.tags.amenity === 'cafe' || e.tags.shop === 'bakery') && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k))).map(e => {
+    const v = $('ptype').value;
+    const list = data.elements.filter(e => {
+        if (!e.tags) return false;
+        const am = e.tags.amenity, sh = e.tags.shop;
+        let ok = (am === 'cafe' || sh === 'bakery');
+        if (v === 'bar' || v === 'rest') ok = ok || am === 'bar' || am === 'pub';
+        if (v === 'rest') ok = ok || am === 'restaurant';
+        return ok && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k));
+    }).map(e => {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
         let oh = null; const raw = e.tags.opening_hours;
@@ -383,6 +405,10 @@ async function setPlace(lat, lng, move = true) {
 let raf = 0;
 $('slider').addEventListener('input', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); });
 $('fopen').onchange = $('fsun').onchange = update;
+// Lädt die Karte neu, sobald das Dropdown geändert wird
+$('ptype').addEventListener('change', () => {
+    if (mapReady && t0) setPlace(place.lat, place.lng, false); // false = Kamera nicht bewegen
+});
 $('q').addEventListener('keydown', async e => {
     if (e.key !== 'Enter') return;
     const q = e.target.value.trim(); if (!q) return;

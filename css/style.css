@@ -68,3 +68,19 @@ dialog#info::backdrop{background:rgba(10,15,25,.5)}
 .gmaps-icon:hover {
     color: var(--sun);
 }
+/* Dropdown menue */
+select {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+select:focus-visible {
+    outline: 2px solid var(--sun);
+    outline-offset: 2px;
+}
