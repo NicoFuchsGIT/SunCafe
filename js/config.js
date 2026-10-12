@@ -20,6 +20,9 @@ export const HORIZON_SECTORS = 180;
 
 export const STEP_MIN = 30, MIN_ALT = 0;
 
+// Sonnenminuten (PRD F3.1): Fenster ab dem gewählten Zeitpunkt und Abtastschritt, in Minuten
+export const SUN_WINDOW_MIN = 120, SUN_STEP_MIN = 5;
+
 // Ketten, die nicht angezeigt werden
 export const BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];
 export const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
