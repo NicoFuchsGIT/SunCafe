@@ -1,6 +1,6 @@
 // ---------- Datenquellen: Overpass, wien.json, Nominatim, Open-Meteo, Kartenkacheln ----------
 // Kein Zugriff auf die Seite: Statusmeldungen gehen über den Callback onStatus.
-import {STYLE_URL, WIEN, WIEN_RANGE, OVERPASS, CAFE_RADIUS, BAD_CHAIN_RE} from './config.js';
+import {STYLE_URL, WIEN, WIEN_RANGE, OVERPASS, CAFE_RADIUS, TERRACE_MATCH_RADIUS, DEFAULT_HEIGHT, BAD_CHAIN_RE} from './config.js';
 import {M_PER_DEG, kxAt, distM} from './geo.js';
 import {parseHours} from './hours.js';
 
@@ -144,7 +144,7 @@ export async function loadBuildings(lat, lng) {
     for (const f of feats) {
         const g = f.geometry; if (!g) continue;
         const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-        const rh = +f.properties.render_height, h = rh > 0 && rh !== 5 ? rh : 15; // 5 = OpenMapTiles-Default ohne height/levels → unbekannt: 15 m
+        const rh = +f.properties.render_height, h = rh > 0 && rh !== 5 ? rh : DEFAULT_HEIGHT; // 5 = OpenMapTiles-Default ohne height/levels → unbekannt
         for (const poly of polys) {
             const ring = poly[0], key = ring[0][0].toFixed(6) + ',' + ring[0][1].toFixed(6) + ',' + ring.length;
             if (seen.has(key)) continue; seen.add(key);
@@ -174,8 +174,8 @@ export function parseCafes(data, lat0, lng0, rg, ptype = 'cafe') {
             dist:Math.hypot((lng - lng0) * kx, (lat - lat0) * ky), outdoor:e.tags.outdoor_seating,
             addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
     }).filter(Boolean);
-    for (const t of terr) { // OSM-Terrasse gehört zum nächsten Café innerhalb von 25 m
-        let best = null, bd = 25;
+    for (const t of terr) { // OSM-Terrasse gehört zum nächsten Café innerhalb von TERRACE_MATCH_RADIUS
+        let best = null, bd = TERRACE_MATCH_RADIUS;
         for (const c of list) { const d = Math.hypot((t.lng - c.lng) * kx, (t.lat - c.lat) * ky); if (d < bd) { bd = d; best = c; } }
         if (best) best.terr.push(t);
     }
