@@ -17,10 +17,12 @@ js/geo.js         Geometrie-Hilfen (Abstände, Punkt-in-Polygon, Strahltest), oh
 js/shade.js       Terrassenposition und Schattenrechnung, ohne DOM
 js/hours.js       Ortszeit und Öffnungszeiten, ohne DOM
 js/data.js        Datenquellen: Overpass, wien.json, Nominatim, Open-Meteo, Gebäude aus Kartenkacheln
-test/             Tests mit node:test, Start mit `npm test` (Node ≥ 18, keine Abhängigkeiten)
+test/             Tests mit node:test, Start mit `npm test` (Node ≥ 18)
+eslint.config.mjs ESLint-Regeln, Prüfung mit `npm run lint` (vorher einmal `npm install`)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache)
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
 .github/workflows/update-wien.yml   aktualisiert data/wien.json am 1. und 15. jedes Monats
+.github/workflows/ci.yml            Lint und Tests bei jedem Push und Pull Request
 backend/          altes Python-Backend (Render), wird nicht mehr verwendet
 ```
 

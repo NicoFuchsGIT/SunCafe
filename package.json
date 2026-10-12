@@ -2,6 +2,12 @@
   "name": "suncafe",
   "private": true,
   "scripts": {
+    "lint": "eslint .",
     "test": "node --test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0"
   }
 }
