@@ -37,8 +37,8 @@ Daten © OpenStreetMap contributors (ODbL).
 
 ## Hinweise
 
-- Nach einer Änderung an `style.css` oder `ui.js` die Zahl hinter `?v=` in `index.html` erhöhen, damit Browser die neue Datei laden. Die übrigen Module werden von `ui.js` ohne `?v=` importiert.
+- Kein Cache-Busting nötig: `vercel.json` liefert `index.html`, `js/`, `css/` und `data/` mit `Cache-Control: max-age=0, must-revalidate` aus. Browser fragen bei jedem Laden per ETag nach und bekommen nur bei Änderungen die neue Datei (sonst `304`). `?v=`-Parameter deshalb nicht mehr anhängen.
 - Uhrzeit und Öffnungsstatus richten sich nach der Ortszeit des gewählten Orts, nicht nach der Zeitzone des Browsers.
 - Feiertage (`PH` in den Öffnungszeiten) gelten für Land und Bundesland des Orts. Ist das Land nicht ermittelbar, werden solche Öffnungszeiten als unbekannt angezeigt.
 - Ketten (Liste `BAD_CHAINS` in `config.js`) werden ausgeblendet, verglichen wird auf ganze Wörter.
-- Gebäude ohne Höhenangabe in OpenStreetMap werden pauschal mit 15 m angesetzt, das Ergebnis ist eine Näherung.
+- Gebäude ohne Höhenangabe in OpenStreetMap werden pauschal mit 15 m angesetzt (`DEFAULT_HEIGHT` in `config.js`), das Ergebnis ist eine Näherung.
