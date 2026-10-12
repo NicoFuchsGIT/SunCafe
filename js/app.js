@@ -4,6 +4,8 @@ const WIEN = {lat: 48.2082, lng: 16.3738};
 const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
 const CAFE_RADIUS = 1000, RINGS = [300, 600, 1050], STEP_MIN = 30, TERRACE_OFFSET = 4, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];
 const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+// Ketten nur als ganze Wörter erkennen, sonst trifft 'anker' auch 'Schmankerl' (Unicode-fähig wegen 'ströck')
+const BAD_CHAIN_RE = new RegExp('(?<![\\p{L}\\p{N}])(' + BAD_CHAINS.join('|') + ')(?![\\p{L}\\p{N}])', 'iu');
 
 // ---------- Zustand ----------
 let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0;
@@ -190,7 +192,7 @@ function parseCafes(data, lat0, lng0) {
         let ok = (am === 'cafe' || sh === 'bakery');
         if (v === 'bar' || v === 'rest') ok = ok || am === 'bar' || am === 'pub';
         if (v === 'rest') ok = ok || am === 'restaurant';
-        return ok && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k));
+        return ok && !BAD_CHAIN_RE.test(e.tags.name || 'unbekannt');
     }).map(e => {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
