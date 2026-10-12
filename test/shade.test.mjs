@@ -5,7 +5,7 @@ import {facadePoints, inShade} from '../js/shade.js';
 import {rayHits, segDist} from '../js/geo.js';
 import {SHADOW_REACH} from '../js/config.js';
 
-const DEG = Math.PI / 180, N = 0, E = 90 * DEG, S = 180 * DEG, W = 270 * DEG;
+const DEG = Math.PI / 180, N = 0, E = 90 * DEG, S = 180 * DEG;
 const ring = pts => pts.concat([pts[0]]);
 const bld = (pts, h = 15) => { const p = ring(pts); return {h, pts: p, d: segDist(p)}; };
 const rect = (x0, y0, x1, y1, h) => bld([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], h); // gegen den Uhrzeigersinn
