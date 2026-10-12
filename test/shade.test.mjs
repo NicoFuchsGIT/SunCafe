@@ -1,7 +1,9 @@
 // Synthetische Szenen für die Schattenrechnung. Koordinaten in Metern relativ zum Café (x Osten, y Norden).
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {rayHits, facadePoints, inShade, segDist, SHADOW_REACH} from '../js/shade.js';
+import {facadePoints, inShade} from '../js/shade.js';
+import {rayHits, segDist} from '../js/geo.js';
+import {SHADOW_REACH} from '../js/config.js';
 
 const DEG = Math.PI / 180, N = 0, E = 90 * DEG, S = 180 * DEG, W = 270 * DEG;
 const ring = pts => pts.concat([pts[0]]);

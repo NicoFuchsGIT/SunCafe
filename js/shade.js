@@ -1,37 +1,6 @@
-// Schattenrechnung ohne DOM. Koordinaten in Metern relativ zum Café (x nach Osten, y nach Norden),
-// Gebäude als {h, pts:[[x,y], ...], d} mit geschlossenem Ring (letzter Punkt = erster Punkt).
-export const TERRACE_OFFSET = 4, SHADOW_REACH = 300;
-
-export const polyContains = (pts, x, y) => { let c = false;
-    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++)
-        if ((pts[i][1] > y) !== (pts[j][1] > y) && x < (pts[j][0]-pts[i][0]) * (y-pts[i][1]) / (pts[j][1]-pts[i][1]) + pts[i][0]) c = !c;
-    return c; };
-
-const SIDES = ['Nord','Nordost','Ost','Südost','Süd','Südwest','West','Nordwest'];
-export const sideName = (nx, ny) => 'Seite ' + SIDES[(Math.round(Math.atan2(nx, ny) / (Math.PI / 4)) + 8) % 8];
-
-export function segDist(p) { // kleinster Abstand des Café-Punkts (0,0) zum Gebäuderand
-    let m = Infinity;
-    for (let i = 0; i < p.length - 1; i++) {
-        const ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], l2 = ex * ex + ey * ey;
-        let s = l2 ? -(p[i][0] * ex + p[i][1] * ey) / l2 : 0; s = Math.max(0, Math.min(1, s));
-        m = Math.min(m, Math.hypot(p[i][0] + s * ex, p[i][1] + s * ey));
-    }
-    return m;
-}
-
-export function rayHits(x, y, dx, dy, maxD, blds) {
-    for (const b of blds) {
-        const p = b.pts;
-        for (let i = 0; i < p.length - 1; i++) {
-            const ax = p[i][0] - x, ay = p[i][1] - y, ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], den = dx * ey - dy * ex;
-            if (Math.abs(den) < 1e-9) continue;
-            const t = (ax * ey - ay * ex) / den, u = (ax * dy - ay * dx) / den;
-            if (u >= 0 && u <= 1 && t > 0.05 && t <= maxD) return true;
-        }
-    }
-    return false;
-}
+// ---------- Terrassenposition und Schattenrechnung (ohne DOM) ----------
+import {TERRACE_OFFSET, SHADOW_REACH} from './config.js';
+import {M_PER_DEG, kxAt, polyContains, segDist, rayHits, sideName} from './geo.js';
 
 export function facadePoints(own, near, owns) {
     const blds = near.concat(owns), p = own.pts, edges = [];
@@ -57,6 +26,36 @@ export function facadePoints(own, near, owns) {
     }
     const open = out.filter(o => !o.enclosed);
     return open.length ? open : out;
+}
+
+export function terracePoints(c, kx, ky) {
+    if (c.terr.length) return c.terr.map(t => ({x: (t.lng - c.lng) * kx, y: (t.lat - c.lat) * ky, label: 'Terrasse (OSM)', kind: 'osm'}));
+    if (c.owns.length) { const f = facadePoints(c.owns[0], c.near, c.owns); if (f.length) return f; }
+    return [{x: 0, y: 0, label: 'Position laut OSM', kind: 'point'}];
+}
+
+export function attachBuildings(list, data) {
+    const bl = data.elements.filter(e => e.type === 'way' && e.tags && e.tags.building && e.geometry).map(e => {
+        const t = e.tags;
+        const h = t.height ? (parseFloat(String(t.height).replace('m','').trim()) || 15) : t['building:levels'] ? (parseFloat(t['building:levels']) || 5) * 3 : 15;
+        return {h, g:e.geometry};
+    });
+    for (const c of list) {
+        const kx = kxAt(c.lat), ky = M_PER_DEG;
+        c.loc = []; c.owns = [];
+        for (const b of bl) {
+            if (Math.abs((b.g[0].lon - c.lng) * kx) > SHADOW_REACH + 150 || Math.abs((b.g[0].lat - c.lat) * ky) > SHADOW_REACH + 150) continue;
+            const pts = b.g.map(p => [(p.lon - c.lng) * kx, (p.lat - c.lat) * ky]);
+            if (!pts.some(p => Math.abs(p[0]) < SHADOW_REACH && Math.abs(p[1]) < SHADOW_REACH)) continue;
+            if (polyContains(pts, 0, 0)) c.owns.push({h:b.h, pts, d:0}); // Gebäude des Cafés
+            else c.loc.push({h:b.h, pts, d:segDist(pts)});
+        }
+        c.near = c.loc.filter(b => b.d < 45);
+        c.occ = c.loc.concat(c.owns); // das eigene Gebäude wirft Schatten auf die Terrasse
+        c.pts = terracePoints(c, kx, ky);
+        for (const pt of c.pts) pt.skip = c.near.concat(c.owns).filter(b => polyContains(b.pts, pt.x, pt.y));
+        c.calc = true;
+    }
 }
 
 export function inShade(c, pt, alt, az) { // az: Kompass, Richtung zur Sonne; pt: Terrassenpunkt relativ zum Café

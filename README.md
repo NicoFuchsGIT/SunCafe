@@ -11,8 +11,12 @@ Quellcode: https://github.com/NicoFuchsGIT/SunCafe
 ```
 index.html        Gerüst und Einbindung der Bibliotheken
 css/style.css     Styles
-js/app.js         Logik (Karte, Daten, Anzeige)
-js/shade.js       Schattenrechnung ohne DOM (Fassadenpunkte, Strahltest, inShade)
+js/ui.js          Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung (ES-Modul)
+js/config.js      Einstellungen (Radien, Kettenliste, Overpass-Server …)
+js/geo.js         Geometrie-Hilfen (Abstände, Punkt-in-Polygon, Strahltest), ohne DOM
+js/shade.js       Terrassenposition und Schattenrechnung, ohne DOM
+js/hours.js       Ortszeit und Öffnungszeiten, ohne DOM
+js/data.js        Datenquellen: Overpass, wien.json, Nominatim, Open-Meteo, Gebäude aus Kartenkacheln
 test/             Tests mit node:test, Start mit `npm test` (Node ≥ 18, keine Abhängigkeiten)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache)
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
@@ -32,8 +36,8 @@ Daten © OpenStreetMap contributors (ODbL).
 
 ## Hinweise
 
-- Nach einer Änderung an `style.css` oder `app.js` die Zahl hinter `?v=` in `index.html` erhöhen, damit Browser die neue Datei laden.
+- Nach einer Änderung an `style.css` oder `ui.js` die Zahl hinter `?v=` in `index.html` erhöhen, damit Browser die neue Datei laden. Die übrigen Module werden von `ui.js` ohne `?v=` importiert.
 - Uhrzeit und Öffnungsstatus richten sich nach der Ortszeit des gewählten Orts, nicht nach der Zeitzone des Browsers.
 - Feiertage (`PH` in den Öffnungszeiten) gelten für Land und Bundesland des Orts. Ist das Land nicht ermittelbar, werden solche Öffnungszeiten als unbekannt angezeigt.
-- Ketten (Liste `BAD_CHAINS` in `app.js`) werden ausgeblendet, verglichen wird auf ganze Wörter.
+- Ketten (Liste `BAD_CHAINS` in `config.js`) werden ausgeblendet, verglichen wird auf ganze Wörter.
 - Gebäude ohne Höhenangabe in OpenStreetMap werden pauschal mit 15 m angesetzt, das Ergebnis ist eine Näherung.
