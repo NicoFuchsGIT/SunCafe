@@ -1,0 +1,7 @@
+{
+  "name": "suncafe",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}
