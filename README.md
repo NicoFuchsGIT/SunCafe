@@ -15,6 +15,7 @@ js/ui.js          Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung (ES-Modul)
 js/config.js      Einstellungen: Radien, Standardhöhe, Terrassen-Offset, Kettenliste, Overpass-Server …
 js/geo.js         Geometrie-Hilfen (Abstände, Punkt-in-Polygon, Strahltest), ohne DOM
 js/shade.js       Terrassenposition und Schattenrechnung, ohne DOM
+js/horizon.js     Horizontmaske pro Messpunkt (180 Sektoren à 2°, uint8) und Schatten-Lookup, ohne DOM
 js/hours.js       Ortszeit und Öffnungszeiten, ohne DOM
 js/data.js        Datenquellen: Overpass, wien.json, Nominatim, Open-Meteo, Gebäude aus Kartenkacheln
 test/             Tests mit node:test, Start mit `npm test` (Node ≥ 18)
