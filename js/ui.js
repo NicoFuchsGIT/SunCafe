@@ -195,8 +195,10 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
 
     $('status').textContent = 'Lade neue Orte im Umkreis …';
     loadWx(lat, lng);
+    // Gewählte Uhrzeit beim Ortswechsel behalten; „Jetzt“ (Schieber auf 0) bleibt „Jetzt“
+    const sl = $('slider'), keep = t0 && +sl.value ? curTime() : null;
     const now = new Date(); now.setMinutes(Math.floor(now.getMinutes() / STEP_MIN) * STEP_MIN, 0, 0); t0 = now;
-    $('slider').value = 0;
+    sl.value = keep ? Math.max(0, Math.min(+sl.max, Math.round((keep - t0) / (STEP_MIN * 60000)))) : 0;
 
     // Wir rufen sofort update() auf! Dadurch sortiert sich die Liste links sofort
     // nach der neuen Distanz, noch bevor Overpass geantwortet hat.
