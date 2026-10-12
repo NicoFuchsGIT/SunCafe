@@ -1,5 +1,5 @@
 // ---------- Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung ----------
-import {STYLE_URL, WIEN, RINGS, STEP_MIN, MIN_ALT} from './config.js';
+import {STYLE_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, EYE_HEIGHT} from './config.js';
 import {M_PER_DEG, kxAt} from './geo.js';
 import {attachBuildings} from './shade.js';
 import {attachMasks, maskShade} from './horizon.js';
@@ -242,7 +242,7 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
             // Schatten wird nur für Orte berechnet, die ihn noch nicht haben (!c.calc)
             const todo = cafes.filter(c => !c.calc && c.dist <= r);
             attachBuildings(todo, data);
-            for (const c of todo) attachMasks(c); // Horizontmasken einmal pro Messpunkt
+            for (const c of todo) attachMasks(c, EYE_HEIGHT); // Horizontmasken einmal pro Messpunkt, aus Augenhöhe
             update();
             await sleep(30);
             if (place !== mine) return;

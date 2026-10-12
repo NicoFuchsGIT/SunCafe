@@ -12,7 +12,7 @@ Quellcode: https://github.com/NicoFuchsGIT/SunCafe
 index.html        Gerüst und Einbindung der Bibliotheken
 css/style.css     Styles
 js/ui.js          Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung (ES-Modul)
-js/config.js      Einstellungen: Radien, Standardhöhe, Terrassen-Offset, Kettenliste, Overpass-Server …
+js/config.js      Einstellungen: Radien, Standardhöhe, Terrassen-Offset, Augenhöhe, Kettenliste, Overpass-Server …
 js/geo.js         Geometrie-Hilfen (Abstände, Punkt-in-Polygon, Strahltest), ohne DOM
 js/shade.js       Terrassenposition und Schattenrechnung, ohne DOM
 js/horizon.js     Horizontmaske pro Messpunkt (180 Sektoren à 2°, uint8) und Schatten-Lookup, ohne DOM

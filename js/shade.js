@@ -59,11 +59,12 @@ export function attachBuildings(list, data) {
     }
 }
 
-export function inShade(c, pt, alt, az) { // az: Kompass, Richtung zur Sonne; pt: Terrassenpunkt relativ zum Café
+// az: Kompass, Richtung zur Sonne; pt: Terrassenpunkt relativ zum Café; eye: Augenhöhe in m über Grund
+export function inShade(c, pt, alt, az, eye = 0) {
     const dx = Math.sin(az), dy = Math.cos(az), ta = Math.tan(Math.max(alt, 0.5 * Math.PI / 180)), po = Math.hypot(pt.x, pt.y);
     for (const b of c.occ) {
-        const reach = Math.min(b.h / ta, SHADOW_REACH);
-        if (b.d - po > reach || pt.skip.includes(b)) continue;
+        const dh = b.h - eye, reach = Math.min(dh / ta, SHADOW_REACH);
+        if (dh <= 0 || b.d - po > reach || pt.skip.includes(b)) continue;
         const p = b.pts;
         for (let i = 0; i < p.length - 1; i++) {
             const ax = p[i][0] - pt.x, ay = p[i][1] - pt.y, ex = p[i+1][0] - p[i][0], ey = p[i+1][1] - p[i][1], den = dx * ey - dy * ex;

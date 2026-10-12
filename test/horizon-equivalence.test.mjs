@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {inShade, facadePoints} from '../js/shade.js';
 import {horizonMask, maskShade, MASK_STEP} from '../js/horizon.js';
 import {polyContains, segDist} from '../js/geo.js';
-import {HORIZON_SECTORS} from '../js/config.js';
+import {HORIZON_SECTORS, EYE_HEIGHT} from '../js/config.js';
 
 const DEG = Math.PI / 180;
 
@@ -32,17 +32,17 @@ function scene(rnd) {
     return {occ: loc.concat(owns), pts};
 }
 
-test('Äquivalenz: Maske weicht in < 1 % der Zeitpunkte von inShade ab', t => {
+for (const eye of [0, EYE_HEIGHT]) test(`Äquivalenz: Maske weicht in < 1 % der Zeitpunkte von inShade ab (Augenhöhe ${eye} m)`, t => {
     const rnd = rng(20261012);
     let n = 0, diff = 0, shade = 0, worst = 0;
     for (let s = 0; s < 150; s++) {
         const c = scene(rnd);
         for (const pt of c.pts) {
-            const mask = horizonMask(pt, c.occ);
+            const mask = horizonMask(pt, c.occ, eye);
             let d = 0;
             for (let j = 0; j < 400; j++) {
                 const alt = (rnd() * 75 - 5) * DEG, az = rnd() * 2 * Math.PI; // auch knapp unter dem Horizont
-                const ref = inShade(c, pt, alt, az);
+                const ref = inShade(c, pt, alt, az, eye);
                 if (ref !== maskShade(mask, alt, az)) d++;
                 if (ref) shade++;
             }
