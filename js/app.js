@@ -194,7 +194,7 @@ async function loadBuildings(lat, lng) {
     for (const f of feats) {
         const g = f.geometry; if (!g) continue;
         const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-        const rh = +f.properties.render_height, h = rh > 5 ? rh : 15; // unbekannte Höhe: 15 m
+        const rh = +f.properties.render_height, h = rh > 0 && rh !== 5 ? rh : 15; // 5 = OpenMapTiles-Default ohne height/levels → unbekannt: 15 m
         for (const poly of polys) {
             const ring = poly[0], key = ring[0][0].toFixed(6) + ',' + ring[0][1].toFixed(6) + ',' + ring.length;
             if (seen.has(key)) continue; seen.add(key);
