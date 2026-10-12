@@ -1,9 +1,9 @@
 // Synthetische Szenen für die Schattenrechnung. Koordinaten in Metern relativ zum Café (x Osten, y Norden).
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {facadePoints, inShade} from '../js/shade.js';
+import {facadePoints, inShade, attachBuildings} from '../js/shade.js';
 import {rayHits, segDist} from '../js/geo.js';
-import {SHADOW_REACH} from '../js/config.js';
+import {SHADOW_REACH, DEFAULT_HEIGHT, LEVEL_HEIGHT} from '../js/config.js';
 
 const DEG = Math.PI / 180, N = 0, E = 90 * DEG, S = 180 * DEG;
 const ring = pts => pts.concat([pts[0]]);
@@ -137,4 +137,19 @@ test('inShade: Terrassenpunkt abseits des Café-Mittelpunkts', () => {
 
 test('inShade: ohne Gebäude immer Sonne', () => {
     assert.equal(inShade({occ: []}, at(0, 0), 10 * DEG, S), false);
+});
+
+// ---------- attachBuildings: Gebäudehöhen ----------
+test('attachBuildings: height, building:levels und Standardhöhe aus config.js', () => {
+    const d = 0.0001, box = (lat, lng) => [[lat-d, lng-d], [lat-d, lng+d], [lat+d, lng+d], [lat+d, lng-d], [lat-d, lng-d]].map(([la, lo]) => ({lat: la, lon: lo}));
+    const heightOf = tags => {
+        const c = {lat: 48.2, lng: 16.37, terr: []};
+        attachBuildings([c], {elements: [{type: 'way', tags: {building: 'yes', ...tags}, geometry: box(c.lat, c.lng)}]});
+        return c.owns[0].h;
+    };
+    assert.equal(heightOf({height: '22 m'}), 22);
+    assert.equal(heightOf({'building:levels': '4'}), 4 * LEVEL_HEIGHT);
+    assert.equal(heightOf({}), DEFAULT_HEIGHT);
+    assert.equal(heightOf({height: 'hoch'}), DEFAULT_HEIGHT);
+    assert.equal(heightOf({'building:levels': 'viele'}), DEFAULT_HEIGHT);
 });

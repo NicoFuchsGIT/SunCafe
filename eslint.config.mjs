@@ -3,7 +3,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  {ignores: ['backend/', 'data/', 'node_modules/']},
+  {ignores: ['data/', 'node_modules/']},
   js.configs.recommended,
   {
     // Bewusst geschluckte Fehler (catch {} als Fallback auf den nächsten Server o. Ä.) sind erlaubt

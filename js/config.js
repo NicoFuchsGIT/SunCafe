@@ -3,7 +3,21 @@ export const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TOD
 export const WIEN = {lat: 48.2082, lng: 16.3738};
 export const WIEN_RANGE = 5000; // Umkreis um den Stephansplatz, den data/wien.json abdeckt
 export const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
-export const CAFE_RADIUS = 1000, RINGS = [300, 600, 1050], STEP_MIN = 30, TERRACE_OFFSET = 4, MIN_ALT = 0, SHADOW_REACH = 300;
+
+// Radien in Metern
+export const CAFE_RADIUS = 1000;          // Suchradius für Cafés um den gewählten Ort
+export const RINGS = [300, 600, 1050];    // Entfernungsringe auf der Karte
+export const SHADOW_REACH = 300;          // weiter reicht kein Schatten in die Rechnung ein
+export const TERRACE_MATCH_RADIUS = 25;   // OSM-Terrasse gehört zum nächsten Café innerhalb dieses Abstands
+
+// Kalibrierbare Parameter der Schattenrechnung (PRD F5.4)
+export const DEFAULT_HEIGHT = 15;  // m, Gebäude ohne height/building:levels
+export const LEVEL_HEIGHT = 3;     // m pro Stockwerk bei building:levels
+export const TERRACE_OFFSET = 4;   // m, geschätzte Terrasse vor der Fassade
+
+export const STEP_MIN = 30, MIN_ALT = 0;
+
+// Ketten, die nicht angezeigt werden
 export const BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];
 export const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 // Ketten nur als ganze Wörter erkennen, sonst trifft 'anker' auch 'Schmankerl' (Unicode-fähig wegen 'ströck')

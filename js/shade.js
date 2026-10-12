@@ -1,5 +1,5 @@
 // ---------- Terrassenposition und Schattenrechnung (ohne DOM) ----------
-import {TERRACE_OFFSET, SHADOW_REACH} from './config.js';
+import {TERRACE_OFFSET, SHADOW_REACH, DEFAULT_HEIGHT, LEVEL_HEIGHT} from './config.js';
 import {M_PER_DEG, kxAt, polyContains, segDist, rayHits, sideName} from './geo.js';
 
 export function facadePoints(own, near, owns) {
@@ -37,7 +37,8 @@ export function terracePoints(c, kx, ky) {
 export function attachBuildings(list, data) {
     const bl = data.elements.filter(e => e.type === 'way' && e.tags && e.tags.building && e.geometry).map(e => {
         const t = e.tags;
-        const h = t.height ? (parseFloat(String(t.height).replace('m','').trim()) || 15) : t['building:levels'] ? (parseFloat(t['building:levels']) || 5) * 3 : 15;
+        const h = t.height ? (parseFloat(String(t.height).replace('m','').trim()) || DEFAULT_HEIGHT)
+            : (parseFloat(t['building:levels']) * LEVEL_HEIGHT || DEFAULT_HEIGHT);
         return {h, g:e.geometry};
     });
     for (const c of list) {
