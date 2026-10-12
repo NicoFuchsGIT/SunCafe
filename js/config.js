@@ -15,6 +15,9 @@ export const DEFAULT_HEIGHT = 15;  // m, Gebäude ohne height/building:levels
 export const LEVEL_HEIGHT = 3;     // m pro Stockwerk bei building:levels
 export const TERRACE_OFFSET = 4;   // m, geschätzte Terrasse vor der Fassade
 
+// Horizontmaske (PRD F1.1): Anzahl Azimut-Sektoren, 180 = 2° pro Sektor
+export const HORIZON_SECTORS = 180;
+
 export const STEP_MIN = 30, MIN_ALT = 0;
 
 // Ketten, die nicht angezeigt werden
