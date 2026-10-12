@@ -135,6 +135,13 @@ test('inShade: Terrassenpunkt abseits des Café-Mittelpunkts', () => {
     assert.equal(inShade(c, at(15, 92), 45 * DEG, N), false); // seitlich vorbei
 });
 
+test('inShade: Augenhöhe verkürzt den Schatten, niedrige Gebäude fallen weg', () => {
+    const c = {occ: [rect(-10, -20, 10, -10, 11)]}; // 11 m hoch, 10 m südlich
+    assert.equal(inShade(c, at(0, 0), 46 * DEG, S), true);       // Schattenlänge 11/tan(46°) ≈ 10,6 m
+    assert.equal(inShade(c, at(0, 0), 46 * DEG, S, 1.2), false); // 9,8/tan(46°) ≈ 9,5 m
+    assert.equal(inShade({occ: [rect(-10, -20, 10, -10, 1)]}, at(0, 0), 1 * DEG, S, 1.2), false); // Mäuerchen unter Augenhöhe
+});
+
 test('inShade: ohne Gebäude immer Sonne', () => {
     assert.equal(inShade({occ: []}, at(0, 0), 10 * DEG, S), false);
 });
