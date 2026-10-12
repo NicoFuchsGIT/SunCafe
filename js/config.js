@@ -14,8 +14,15 @@ export const TERRACE_MATCH_RADIUS = 25;   // OSM-Terrasse gehört zum nächsten 
 export const DEFAULT_HEIGHT = 15;  // m, Gebäude ohne height/building:levels
 export const LEVEL_HEIGHT = 3;     // m pro Stockwerk bei building:levels
 export const TERRACE_OFFSET = 4;   // m, geschätzte Terrasse vor der Fassade
+export const EYE_HEIGHT = 1.2;     // m, Augenhöhe einer sitzenden Person über Grund (PRD F1.3)
+
+// Horizontmaske (PRD F1.1): Anzahl Azimut-Sektoren, 180 = 2° pro Sektor
+export const HORIZON_SECTORS = 180;
 
 export const STEP_MIN = 30, MIN_ALT = 0;
+
+// Sonnenminuten (PRD F3.1): Fenster ab dem gewählten Zeitpunkt und Abtastschritt, in Minuten
+export const SUN_WINDOW_MIN = 120, SUN_STEP_MIN = 5;
 
 // Ketten, die nicht angezeigt werden
 export const BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];

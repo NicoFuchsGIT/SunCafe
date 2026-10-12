@@ -26,11 +26,15 @@
             <label><input type="checkbox" id="fopen"> Geöffnet</label>
             <label><input type="checkbox" id="fsun"> Nur Sonne</label>
         </div>
-        <div style="padding: 0 16px 12px; border-bottom: 1px solid var(--line);">
+        <div style="padding: 0 16px 12px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px;">
             <select id="ptype" aria-label="Kategorie auswählen">
                 <option value="cafe">☕️ Nur Cafés & Bäckereien</option>
                 <option value="bar">🍻 Auch Bars & Pubs</option>
                 <option value="rest">🍽️ Alles (inkl. Restaurants)</option>
+            </select>
+            <select id="fsort" aria-label="Sortierung">
+                <option value="dist">📍 Entfernung</option>
+                <option value="sun">☀️ meiste Sonne (2 h)</option>
             </select>
         </div>
         <div id="status">Karte antippen oder Adresse suchen, um Cafés zu laden.</div>
@@ -61,6 +65,7 @@
         <p><span class="dot shade"></span>Schatten durch Gebäude</p>
         <p><span class="dot night"></span>Nacht oder noch nicht berechnet</p>
         <p>„Teils Sonne“ heißt: An einer Seite des Cafés scheint Sonne, an einer anderen nicht. Blasse Einträge sind geschlossen.</p>
+        <p>„☀️ 85 min“ heißt: So viele Minuten Sonne gibt es dort in den 2 Stunden ab der gewählten Zeit, solange geöffnet ist. Danach lässt sich die Liste auch sortieren.</p>
 
         <h3>So wird gerechnet</h3>
         <ul>

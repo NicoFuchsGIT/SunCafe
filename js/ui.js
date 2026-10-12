@@ -1,7 +1,9 @@
 // ---------- Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung ----------
-import {STYLE_URL, WIEN, RINGS, STEP_MIN, MIN_ALT} from './config.js';
+import {STYLE_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, EYE_HEIGHT} from './config.js';
 import {M_PER_DEG, kxAt} from './geo.js';
-import {attachBuildings, inShade} from './shade.js';
+import {attachBuildings} from './shade.js';
+import {attachMasks, maskShade} from './horizon.js';
+import {sunTrack, sunMinutes} from './sunminutes.js';
 import {wall, fmtD, openInfo} from './hours.js';
 import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, parseCafes} from './data.js';
 
@@ -93,7 +95,7 @@ function update() {
         if (night) c.state = 'night';
         else if (!c.calc) c.state = 'pending';
         else {
-            c.res = c.pts.map(p => inShade(c, p, alt, az));
+            c.res = c.pts.map(p => maskShade(p.mask, alt, az)); // Masken-Lookup, keine Strahlengeometrie pro Schieberschritt
             const sunny = c.res.filter(x => !x).length;
             c.state = sunny ? 'sun' : 'shade';
             c.partial = sunny > 0 && sunny < c.res.length;
@@ -106,12 +108,17 @@ function update() {
     }
     map.getSource('cafes').setData({type:'FeatureCollection', features:rows.map(c => ({type:'Feature',
             geometry:{type:'Point', coordinates:[c.lng, c.lat]}, properties:{id:c.id, s:c.state, o:c.info.o}}))});
-    rows.sort((a, b) => a.dist - b.dist);
+    // Sonnenminuten im Fenster ab d (F3.1); Sonnenstand einmal für alle, null solange Schatten fehlt
+    const track = sunTrack(d, x => SunCalc.getPosition(x, place.lat, place.lng), tz);
+    for (const c of rows) c.sunMin = sunMinutes(c, track);
+    const bySun = $('fsort').value === 'sun', sm = c => c.sunMin ?? -1;
+    rows.sort((a, b) => (bySun ? sm(b) - sm(a) : 0) || a.dist - b.dist);
     const L = $('list'); L.innerHTML = '';
     for (const c of rows.slice(0, 80)) {
         const li = document.createElement('li'); li.tabIndex = 0;
         li.className = c.info.o === 0 ? 'closed' : '';
-        li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="dist">${c.dist < 1000 ? Math.round(c.dist) + ' m' : (c.dist/1000).toFixed(1) + ' km'}</span>`;
+        li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="meta"><span class="sm"></span><span class="dist">${c.dist < 1000 ? Math.round(c.dist) + ' m' : (c.dist/1000).toFixed(1) + ' km'}</span></span>`;
+        if (c.sunMin != null) li.querySelector('.sm').textContent = '☀️ ' + c.sunMin + ' min';
         li.querySelector('.nm').textContent = c.name;
         li.querySelector('.sub').textContent = stateText(c) + (c.hof && c.state !== 'night' ? ' (Innenhof möglich)' : '') + ' · ' + c.info.text;
         const go = () => { map.flyTo({center:[c.lng, c.lat], zoom:Math.max(map.getZoom(), 16.5)}); openPopup(c.id); };
@@ -188,8 +195,10 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
 
     $('status').textContent = 'Lade neue Orte im Umkreis …';
     loadWx(lat, lng);
+    // Gewählte Uhrzeit beim Ortswechsel behalten; „Jetzt“ (Schieber auf 0) bleibt „Jetzt“
+    const sl = $('slider'), keep = t0 && +sl.value ? curTime() : null;
     const now = new Date(); now.setMinutes(Math.floor(now.getMinutes() / STEP_MIN) * STEP_MIN, 0, 0); t0 = now;
-    $('slider').value = 0;
+    sl.value = keep ? Math.max(0, Math.min(+sl.max, Math.round((keep - t0) / (STEP_MIN * 60000)))) : 0;
 
     // Wir rufen sofort update() auf! Dadurch sortiert sich die Liste links sofort
     // nach der neuen Distanz, noch bevor Overpass geantwortet hat.
@@ -233,7 +242,9 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
         if (!data.elements.length) throw new Error('keine Gebäude');
         for (const r of RINGS) {
             // Schatten wird nur für Orte berechnet, die ihn noch nicht haben (!c.calc)
-            attachBuildings(cafes.filter(c => !c.calc && c.dist <= r), data);
+            const todo = cafes.filter(c => !c.calc && c.dist <= r);
+            attachBuildings(todo, data);
+            for (const c of todo) attachMasks(c, EYE_HEIGHT); // Horizontmasken einmal pro Messpunkt, aus Augenhöhe
             update();
             await sleep(30);
             if (place !== mine) return;
@@ -247,7 +258,7 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
 // ---------- Bedienung ----------
 let raf = 0;
 $('slider').addEventListener('input', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); });
-$('fopen').onchange = $('fsun').onchange = update;
+$('fopen').onchange = $('fsun').onchange = $('fsort').onchange = update;
 // Lädt die Karte neu, sobald das Dropdown geändert wird
 $('ptype').addEventListener('change', () => {
     if (!mapReady || !t0) return;

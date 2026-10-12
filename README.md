@@ -12,12 +12,14 @@ Quellcode: https://github.com/NicoFuchsGIT/SunCafe
 index.html        Gerüst und Einbindung der Bibliotheken
 css/style.css     Styles
 js/ui.js          Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung (ES-Modul)
-js/config.js      Einstellungen: Radien, Standardhöhe, Terrassen-Offset, Kettenliste, Overpass-Server …
+js/config.js      Einstellungen: Radien, Standardhöhe, Terrassen-Offset, Augenhöhe, Kettenliste, Overpass-Server …
 js/geo.js         Geometrie-Hilfen (Abstände, Punkt-in-Polygon, Strahltest), ohne DOM
 js/shade.js       Terrassenposition und Schattenrechnung, ohne DOM
+js/horizon.js     Horizontmaske pro Messpunkt (180 Sektoren à 2°, uint8) und Schatten-Lookup, ohne DOM
+js/sunminutes.js  Sonnenminuten im Zeitfenster (Standard 2 h, 5-min-Schritt), Öffnungszeiten berücksichtigt, ohne DOM
 js/hours.js       Ortszeit und Öffnungszeiten, ohne DOM
 js/data.js        Datenquellen: Overpass, wien.json, Nominatim, Open-Meteo, Gebäude aus Kartenkacheln
-test/             Tests mit node:test, Start mit `npm test` (Node ≥ 18)
+test/             Tests mit node:test, Start mit `npm ci && npm test` (Node ≥ 18); SunCalc und opening_hours als devDependencies in denselben Versionen wie in index.html
 eslint.config.mjs ESLint-Regeln, Prüfung mit `npm run lint` (vorher einmal `npm install`)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache)
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
