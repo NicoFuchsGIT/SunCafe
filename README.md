@@ -11,7 +11,9 @@ Quellcode: https://github.com/NicoFuchsGIT/SunCafe
 ```
 index.html        Gerüst und Einbindung der Bibliotheken
 css/style.css     Styles
-js/app.js         Logik (Karte, Daten, Schattenrechnung, Anzeige)
+js/app.js         Logik (Karte, Daten, Anzeige)
+js/shade.js       Schattenrechnung ohne DOM (Fassadenpunkte, Strahltest, inShade)
+test/             Tests mit node:test, Start mit `npm test` (Node ≥ 18, keine Abhängigkeiten)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache)
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
 .github/workflows/update-wien.yml   aktualisiert data/wien.json am 1. und 15. jedes Monats
