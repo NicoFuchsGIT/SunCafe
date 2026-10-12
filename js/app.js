@@ -4,10 +4,21 @@ const WIEN = {lat: 48.2082, lng: 16.3738};
 const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
 const CAFE_RADIUS = 1000, RINGS = [300, 600, 1050], STEP_MIN = 30, TERRACE_OFFSET = 4, MIN_ALT = 0, SHADOW_REACH = 300, BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];
 const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+// Ketten nur als ganze Wörter erkennen, sonst trifft 'anker' auch 'Schmankerl' (Unicode-fähig wegen 'ströck')
+const BAD_CHAIN_RE = new RegExp('(?<![\\p{L}\\p{N}])(' + BAD_CHAINS.join('|') + ')(?![\\p{L}\\p{N}])', 'iu');
 
 // ---------- Zustand ----------
-let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0;
+let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, osrv = 0, lastNom = 0, tz = null;
 const $ = id => document.getElementById(id);
+// Ortszeit: Date, dessen lokale Felder (getHours, getDay …) der Uhrzeit am gewählten Ort entsprechen (tz aus Open-Meteo)
+let tzFmt = null;
+const wall = d => {
+    if (!tz) return d;
+    if (!tzFmt || tzFmt.resolvedOptions().timeZone !== tz) tzFmt = new Intl.DateTimeFormat('en-US', {timeZone:tz, hourCycle:'h23',
+        year:'numeric', month:'numeric', day:'numeric', hour:'numeric', minute:'numeric', second:'numeric'});
+    const p = Object.fromEntries(tzFmt.formatToParts(d).map(x => [x.type, x.value]));
+    return new Date(+p.year, p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+};
 const fmtT = d => d.toLocaleTimeString('de-AT', {hour:'2-digit', minute:'2-digit'});
 const fmtD = d => DAYS[d.getDay()] + ' ' + fmtT(d);
 const curTime = () => new Date(t0.getTime() + $('slider').value * STEP_MIN * 60000);
@@ -104,13 +115,13 @@ async function overpass(q, key, ms) {
 let wienCache = null;
 
 const range = 5000;
+const distToZentrum = (lat, lng) => Math.hypot((lng - WIEN.lng) * 111320 * Math.cos(lat * Math.PI / 180), (lat - WIEN.lat) * 111320);
 const fetchCafes = async (lat, lng) => {
-    const distToZentrum = Math.hypot((lng - 16.3738) * 111320 * Math.cos(lat * Math.PI / 180), (lat - 48.2082) * 111320);
     const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
     const v = $('ptype') ?$('ptype').value : 'cafe';
 
     // 1. Versuch: Der Wien-Turbo
-    if (distToZentrum < range) {
+    if (distToZentrum(lat, lng) < range) {
         try {
             if (!wienCache) {
                 const r = await fetch('data/wien.json');
@@ -145,6 +156,26 @@ const fetchCafes = async (lat, lng) => {
     return overpass(`[out:json][timeout:25];(${q});out body center;`, `sc:c2:${v}:${lat},${lng}`, 25000);
 };
 
+// ---------- Land/Bundesland für Feiertage (Nominatim, max. 1 Anfrage pro Sekunde) ----------
+async function nomSlot() { const w = lastNom + 1100 - Date.now(); if (w > 0) await sleep(w); lastNom = Date.now(); }
+async function region(lat, lng) {
+    if (distToZentrum(lat, lng) < range) return {country_code:'at', state:'Wien'};
+    const key = 'rg:' + lat.toFixed(1) + ',' + lng.toFixed(1);
+    try { const c = JSON.parse(localStorage.getItem(key)); if (c) return c; } catch(x) {}
+    try {
+        await nomSlot();
+        // Bundesländer auf Deutsch, so heißen sie in den Feiertagsdaten von opening_hours (z. B. „Bayern“)
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=5&accept-language=de&lat=${lat}&lon=${lng}`);
+        const a = (await r.json()).address;
+        if (a && a.country_code) {
+            const rg = {country_code:a.country_code, state:a.state};
+            try { localStorage.setItem(key, JSON.stringify(rg)); } catch(x) {}
+            return rg;
+        }
+    } catch(x) {}
+    return null;
+}
+
 // ---------- Gebäude aus Kartenkacheln (unsichtbare Zweitkarte) ----------
 let bmap = null;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -163,7 +194,7 @@ async function loadBuildings(lat, lng) {
     for (const f of feats) {
         const g = f.geometry; if (!g) continue;
         const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-        const rh = +f.properties.render_height, h = rh > 5 ? rh : 15; // unbekannte Höhe: 15 m
+        const rh = +f.properties.render_height, h = rh > 0 && rh !== 5 ? rh : 15; // 5 = OpenMapTiles-Default ohne height/levels → unbekannt: 15 m
         for (const poly of polys) {
             const ring = poly[0], key = ring[0][0].toFixed(6) + ',' + ring[0][1].toFixed(6) + ',' + ring.length;
             if (seen.has(key)) continue; seen.add(key);
@@ -179,7 +210,7 @@ const polyContains = (pts, x, y) => { let c = false;
         if ((pts[i][1] > y) !== (pts[j][1] > y) && x < (pts[j][0]-pts[i][0]) * (y-pts[i][1]) / (pts[j][1]-pts[i][1]) + pts[i][0]) c = !c;
     return c; };
 
-function parseCafes(data, lat0, lng0) {
+function parseCafes(data, lat0, lng0, rg) {
     const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 111320;
     const terr = data.elements.filter(e => e.tags && (e.tags.leisure === 'outdoor_seating' || e.tags.amenity === 'biergarten'))
         .map(e => ({lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon})).filter(t => t.lat != null);
@@ -190,12 +221,13 @@ function parseCafes(data, lat0, lng0) {
         let ok = (am === 'cafe' || sh === 'bakery');
         if (v === 'bar' || v === 'rest') ok = ok || am === 'bar' || am === 'pub';
         if (v === 'rest') ok = ok || am === 'restaurant';
-        return ok && !BAD_CHAINS.some(k => (e.tags.name || 'unbekannt').toLowerCase().includes(k));
+        return ok && !BAD_CHAIN_RE.test(e.tags.name || 'unbekannt');
     }).map(e => {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
         let oh = null; const raw = e.tags.opening_hours;
-        if (raw) { try { oh = new opening_hours(raw, {lat, lon:lng, address:{country_code:'at'}}, {locale:'de'}); } catch(x) { oh = null; } }
+        // ohne Land kennt opening_hours keine Feiertage und lehnt Werte mit PH ab; lat/lon müssen Strings sein
+        if (raw) { try { oh = new opening_hours(raw, {lat:String(lat), lon:String(lng), address:rg || {}}, {locale:'de'}); } catch(x) { oh = null; } }
         return {id:String(e.id), name:e.tags.name || 'Café ohne Namen', lat, lng, loc:[], calc:false, terr:[], oh, raw,
             dist:Math.hypot((lng - lng0) * kx, (lat - lat0) * ky), outdoor:e.tags.outdoor_seating,
             addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
@@ -315,7 +347,7 @@ function inShade(c, pt, alt, az) { // az: Kompass, Richtung zur Sonne; pt: Terra
     return false;
 }
 
-function openInfo(c, d) {
+function openInfo(c, d) { // d in Ortszeit (wall)
     if (!c.oh) return {o:-1, text:'Öffnungszeiten unbekannt'};
     try {
         const next = c.oh.getNextChange(d), nt = next ? (next.toDateString() === d.toDateString() ? fmtT(next) : fmtD(next)) : null;
@@ -328,8 +360,8 @@ function openInfo(c, d) {
 // ---------- Anzeige ----------
 function update() {
     if (!mapReady || !t0) return;
-    const d = curTime(), s = d.getTime() === t0.getTime();
-    $('tlabel').textContent = s ? 'Jetzt' : fmtD(d);
+    const d = curTime(), s = d.getTime() === t0.getTime(), w = wall(d);
+    $('tlabel').textContent = s ? 'Jetzt' : fmtD(w);
     const sp = SunCalc.getPosition(d, place.lat, place.lng), alt = sp.altitude, az = sp.azimuth + Math.PI;
     const night = alt < MIN_ALT;
     document.documentElement.classList.toggle('dark', night);
@@ -347,7 +379,7 @@ function update() {
             c.partial = sunny > 0 && sunny < c.res.length;
             c.hof = c.pts.every(p => p.enclosed);
         }
-        c.info = openInfo(c, d);
+        c.info = openInfo(c, w);
         if (onlyOpen && c.info.o === 0) continue;
         if (onlySun && (c.state !== 'sun' || c.hof)) continue;
         rows.push(c);
@@ -404,12 +436,17 @@ function openPopup(id) {
 
 // ---------- Wetter ----------
 async function loadWx(lat, lng) {
+    const mine = place;
     wx = null;
     try {
-        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,cloud_cover&forecast_days=3&timezone=auto`);
-        const j = await r.json(); wx = {t0:new Date(j.hourly.time[0]), T:j.hourly.temperature_2m, C:j.hourly.cloud_cover};
+        // unixtime: Zeitpunkte unabhängig von der Browser-Zeitzone; timezone=auto liefert die Zeitzone des Orts
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,cloud_cover&forecast_days=3&timezone=auto&timeformat=unixtime`);
+        const j = await r.json();
+        if (place !== mine) return;
+        wx = {t0:new Date(j.hourly.time[0] * 1000), T:j.hourly.temperature_2m, C:j.hourly.cloud_cover};
+        tz = j.timezone;
     } catch(e) {}
-    showWx(curTime());
+    if (place === mine) update();
 }
 function showWx(d) {
     if (!wx) { $('wx').textContent = 'Wetter nicht verfügbar'; return; }
@@ -418,8 +455,9 @@ function showWx(d) {
 }
 
 // ---------- Ort setzen ----------
-async function setPlace(lat, lng, move = true) {
+async function setPlace(lat, lng, move = true, knownRg = null) {
     const mine = place = {lat, lng};
+    const rgP = knownRg ? Promise.resolve(knownRg) : region(lat, lng);
     if (popup) { popup.remove(); popup = null; }
     map.getSource('center').setData({type:'Point', coordinates:[lng, lat]});
     if (move) map.flyTo({center:[lng, lat], zoom:Math.max(map.getZoom(), 15.5)});
@@ -441,7 +479,8 @@ async function setPlace(lat, lng, move = true) {
 
     const rl = +lat.toFixed(3), rg = +lng.toFixed(3);
     try {
-        const list = parseCafes(await fetchCafes(rl, rg), lat, lng);
+        const [data, reg] = await Promise.all([fetchCafes(rl, rg), rgP]);
+        const list = parseCafes(data, lat, lng, reg);
         if (place !== mine) return;
 
         // 2. NEU: Merge statt Überschreiben! Wir fügen nur Orte hinzu, die wir noch nicht kennen.
@@ -505,12 +544,13 @@ $('q').addEventListener('keydown', async e => {
     if (!hit) {
         if (Date.now() - lastNom < 1100) return; lastNom = Date.now();
         try {
-            const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
-            const j = await r.json(); if (j[0]) { hit = {lat:+j[0].lat, lng:+j[0].lon};
+            const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&accept-language=de&q=' + encodeURIComponent(q));
+            const j = await r.json(); const a = j[0] && j[0].address;
+            if (j[0]) { hit = {lat:+j[0].lat, lng:+j[0].lon, rg:a && a.country_code ? {country_code:a.country_code, state:a.state} : null};
                 try { localStorage.setItem(key, JSON.stringify(hit)); } catch(x) {} }
         } catch(x) {}
     }
-    if (hit) setPlace(hit.lat, hit.lng); else $('status').textContent = 'Adresse nicht gefunden.';
+    if (hit) setPlace(hit.lat, hit.lng, true, hit.rg); else $('status').textContent = 'Adresse nicht gefunden.';
 });
 
 // ---------- Info-Dialog ----------
