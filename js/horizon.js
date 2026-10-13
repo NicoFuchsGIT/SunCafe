@@ -44,3 +44,15 @@ export const maskShade = (mask, alt, az) => Math.max(alt, MIN_SUN) <= mask[secto
 export function attachMasks(c, eye = 0) {
     for (const pt of c.pts) pt.mask = horizonMask(pt, c.occ, eye);
 }
+
+// ---------- Vorberechnete Wien-Masken (PRD F2.4–F2.5, Format: pipeline/points.py write_tiles) ----------
+const TILE_DEG = 0.02;
+export const tileKey = (lat, lng) => `${Math.floor(lat / TILE_DEG)}_${Math.floor(lng / TILE_DEG)}`;
+
+// Messpunkte einer Kachel: Base64-Maske → Uint8Array; kaputte Einträge fallen weg (Client rechnet dann selbst)
+export function decodePoints(pts) {
+    try {
+        const out = pts.map(p => ({...p, mask: Uint8Array.from(atob(p.mask), ch => ch.charCodeAt(0))}));
+        return out.length && out.every(p => p.mask.length === N && Number.isFinite(p.x) && Number.isFinite(p.y)) ? out : null;
+    } catch(e) { return null; }
+}

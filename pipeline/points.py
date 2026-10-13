@@ -3,11 +3,15 @@
 Messpunkte: OSM-Terrasse, sonst Punkte vor den Fassaden des eigenen Gebäudes, sonst die OSM-Position.
 Koordinaten in Metern relativ zum Ort (x nach Osten, y nach Norden). Gebäudehöhen aus dem
 Baukörpermodell der Stadt Wien, OSM-Höhe als Fallback. Nur Standardbibliothek.
-Aufruf: python3 pipeline/points.py [--buildings gebaeude.json] [--wien baukoerper.json] > punkte.json
+Aufruf: python3 pipeline/points.py [--buildings gebaeude.json] [--wien baukoerper.json] [--out data/horizon] > punkte.json
+Mit --out zusätzlich die Client-Kacheln (Phase 2.5, siehe write_tiles).
 """
 import argparse
+import base64
+import gzip
 import json
 import math
+import os
 import re
 import sys
 import urllib.parse
@@ -247,6 +251,37 @@ def attach_points(places, buildings, heights=None, eye=EYE_HEIGHT, terrain=None)
                       for p in c['pts']] for c in places}
 
 
+TILE_DEG = 0.02  # Kachel ca. 2,2 × 1,5 km; wie js/horizon.js
+MAX_GZIP = 2_000_000  # PRD F2.4
+
+
+def tile_key(lat, lng):
+    return f'{math.floor(lat / TILE_DEG)}_{math.floor(lng / TILE_DEG)}'
+
+
+def write_tiles(pts, places, out_dir):
+    """Messpunkte als Kacheln <out_dir>/<tile_key>.json: Ort-ID → [{x, y, label, kind, enclosed?, mask}].
+
+    x, y auf 0,1 m gerundet, Maske als Base64 der 180 uint8. Bricht ab, bevor etwas geschrieben ist,
+    wenn alle Kacheln zusammen gzip-komprimiert größer als MAX_GZIP wären.
+    """
+    tiles = {}
+    for c in places:
+        tiles.setdefault(tile_key(c['lat'], c['lng']), {})[c['id']] = [
+            {'x': round(p['x'], 1), 'y': round(p['y'], 1), 'label': p['label'], 'kind': p['kind'],
+             **({'enclosed': True} if p.get('enclosed') else {}),
+             'mask': base64.b64encode(bytes(p['mask'])).decode()} for p in pts[c['id']]]
+    blobs = {k: json.dumps(v, ensure_ascii=False, separators=(',', ':')).encode() for k, v in tiles.items()}
+    size = sum(len(gzip.compress(b)) for b in blobs.values())
+    if size > MAX_GZIP:
+        raise SystemExit(f'Kacheln zu groß: {size} B gzip > {MAX_GZIP}')
+    os.makedirs(out_dir, exist_ok=True)
+    for k, b in blobs.items():
+        with open(os.path.join(out_dir, k + '.json'), 'wb') as f:
+            f.write(b)
+    return size
+
+
 def bbox(places):
     """(w, s, e, n) um alle Orte plus Schattenreichweite."""
     pad = (SHADOW_REACH + 150) / M_PER_DEG
@@ -274,6 +309,7 @@ def main():
     ap.add_argument('--places', default='data/wien.json', help='Orte als Overpass-JSON')
     ap.add_argument('--buildings', help='Gebäude als Overpass-JSON (out geom); ohne: live von Overpass')
     ap.add_argument('--wien', help='Baukörper als GeoJSON (WFS ogdwien:FMZKBKMOGD); ohne: live vom WFS')
+    ap.add_argument('--out', help='Verzeichnis für die Client-Kacheln, z. B. data/horizon')
     a = ap.parse_args()
     with open(a.places, encoding='utf-8') as f:
         places = parse_places(json.load(f))
@@ -292,7 +328,10 @@ def main():
         wien = fetch_wien_tiles(box)
     heights = {el['id']: h for h, el in match(wien, buildings, 'O_KOTE', 'HOEHE_DGM')}
     print(f'{len(heights)} von {len(buildings)} Gebäuden mit Wien-Höhe', file=sys.stderr)
-    json.dump(attach_points(places, buildings, heights, terrain=(dem(NEAR_ZOOM), dem(FAR_ZOOM))), sys.stdout, ensure_ascii=False, separators=(',', ':'))
+    pts = attach_points(places, buildings, heights, terrain=(dem(NEAR_ZOOM), dem(FAR_ZOOM)))
+    if a.out:
+        print(f'Kacheln: {write_tiles(pts, places, a.out)} B gzip', file=sys.stderr)
+    json.dump(pts, sys.stdout, ensure_ascii=False, separators=(',', ':'))
 
 
 if __name__ == '__main__':

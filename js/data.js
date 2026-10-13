@@ -3,6 +3,7 @@
 import {STYLE_URL, WIEN, WIEN_RANGE, OVERPASS, CAFE_RADIUS, TERRACE_MATCH_RADIUS, DEFAULT_HEIGHT, BAD_CHAIN_RE} from './config.js';
 import {M_PER_DEG, kxAt, distM} from './geo.js';
 import {parseHours} from './hours.js';
+import {tileKey, decodePoints} from './horizon.js';
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 export const inWien = (lat, lng) => distM(lat, lng, WIEN.lat, WIEN.lng) < WIEN_RANGE;
@@ -77,6 +78,19 @@ export async function fetchCafes(lat, lng, ptype = 'cafe', onStatus = () => {}) 
     q += `nwr["leisure"="outdoor_seating"]${a}`;
 
     return overpass(`[out:json][timeout:25];(${q});out body center;`, `sc:c2:${ptype}:${lat},${lng}`, 25000, onStatus);
+}
+
+// ---------- Vorberechnete Horizontmasken für Wien (data/horizon/<Kachel>.json) ----------
+// Setzt c.pts und c.calc für alle Orte, die in einer Kachel stehen; fehlende Kacheln oder Orte rechnet der Client selbst.
+const horizonTiles = new Map(); // Kachel → Promise (Objekt oder null)
+export async function loadHorizon(list) {
+    await Promise.all(list.filter(c => !c.calc && inWien(c.lat, c.lng)).map(async c => {
+        const k = tileKey(c.lat, c.lng);
+        if (!horizonTiles.has(k)) horizonTiles.set(k, fetch(`data/horizon/${k}.json`).then(r => r.ok ? r.json() : null).catch(() => null));
+        const pts = (await horizonTiles.get(k))?.[c.id];
+        const dec = pts && decodePoints(pts);
+        if (dec) { c.pts = dec; c.calc = true; }
+    }));
 }
 
 // ---------- Nominatim (max. 1 Anfrage pro Sekunde) ----------

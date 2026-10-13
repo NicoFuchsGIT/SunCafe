@@ -1,7 +1,7 @@
 // Horizontmaske auf synthetischen Szenen. Koordinaten in Metern relativ zum Café (x Osten, y Norden).
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {horizonMask, maskShade, sectorOf, attachMasks, MASK_STEP} from '../js/horizon.js';
+import {horizonMask, maskShade, sectorOf, attachMasks, MASK_STEP, tileKey, decodePoints} from '../js/horizon.js';
 import {segDist} from '../js/geo.js';
 import {SHADOW_REACH, HORIZON_SECTORS} from '../js/config.js';
 
@@ -98,4 +98,16 @@ test('attachMasks: Maske für jeden Messpunkt aus c.occ', () => {
     assert.equal(c.pts[0].mask.length, HORIZON_SECTORS);
     assert.equal(maskShade(c.pts[0].mask, 45 * DEG, S), true);
     assert.ok(c.pts[1].mask.every(v => v === 0));
+});
+
+test('decodePoints/tileKey: Kachelformat aus pipeline/points.py write_tiles', () => {
+    const mask = new Uint8Array(HORIZON_SECTORS); mask[90] = 200;
+    const b64 = Buffer.from(mask).toString('base64');
+    const [p] = decodePoints([{x: 10, y: 0, label: 'Terrasse (OSM)', kind: 'osm', mask: b64}]);
+    assert.deepEqual(p.mask, mask);
+    assert.ok(maskShade(p.mask, 10 * DEG, S));
+    assert.equal(decodePoints([{x: 0, y: 0, mask: 'AAAA'}]), null); // falsche Länge → Client rechnet selbst
+    assert.equal(decodePoints([{x: 0, y: 0, mask: '%%'}]), null);
+    assert.equal(decodePoints([]), null);
+    assert.equal(tileKey(48.2, 16.37), '2410_818'); // wie tile_key in Python
 });

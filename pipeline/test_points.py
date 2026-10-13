@@ -1,8 +1,13 @@
 """Aufruf: python3 -m unittest discover pipeline"""
+import base64
+import json
 import math
+import os
+import tempfile
 import unittest
 
-from points import BAD_CHAIN_RE, M_PER_DEG, attach_points, kx_at, parse_places
+import points
+from points import BAD_CHAIN_RE, M_PER_DEG, attach_points, kx_at, parse_places, tile_key, write_tiles
 
 LAT, LNG = 48.2, 16.37
 
@@ -56,6 +61,23 @@ class PointsTest(unittest.TestCase):
         self.assertEqual(attach_points(places, []), {'1': [{'x': 0, 'y': 0, 'label': 'Position laut OSM', 'kind': 'point',
                                                              'mask': [0] * 180}]})
         self.assertFalse(BAD_CHAIN_RE.search('Schmankerl'))
+
+    def test_write_tiles_roundtrip_and_size_limit(self):
+        places = parse_places({'elements': [node(1, amenity='cafe'), node(2, 10, 0, leisure='outdoor_seating')]})
+        pts = attach_points(places, [way(-5, -5, 5, 5)])
+        with tempfile.TemporaryDirectory() as d:
+            write_tiles(pts, places, d)
+            with open(os.path.join(d, tile_key(LAT, LNG) + '.json'), encoding='utf-8') as f:
+                p = json.load(f)['1'][0]
+            self.assertEqual((p['x'], p['y'], p['kind']), (10.0, 0.0, 'osm'))
+            self.assertEqual(list(base64.b64decode(p['mask'])), pts['1'][0]['mask'])
+            old, points.MAX_GZIP = points.MAX_GZIP, 10
+            try:
+                with self.assertRaises(SystemExit):
+                    write_tiles(pts, places, os.path.join(d, 'neu'))
+            finally:
+                points.MAX_GZIP = old
+            self.assertFalse(os.path.exists(os.path.join(d, 'neu')))  # nichts halb geschrieben
 
 
 if __name__ == '__main__':

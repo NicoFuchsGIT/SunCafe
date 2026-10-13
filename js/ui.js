@@ -5,7 +5,7 @@ import {attachBuildings} from './shade.js';
 import {attachMasks, maskShade} from './horizon.js';
 import {sunTrack, sunMinutes} from './sunminutes.js';
 import {wall, fmtD, openInfo} from './hours.js';
-import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, parseCafes} from './data.js';
+import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes} from './data.js';
 
 // ---------- Zustand ----------
 let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, tz = null;
@@ -250,8 +250,13 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
     update();
     if (!cafes.length) { $('status').textContent = 'Bisher keine Orte gefunden.'; return; }
 
+    await loadHorizon(cafes); // Wien: vorberechnete Masken mit echten Höhen und Gelände
+    if (place !== mine) return;
+    update();
+    if (!cafes.some(c => !c.calc && c.dist <= RINGS[RINGS.length - 1])) { $('status').textContent = `${cafes.length} Orte insgesamt im Speicher.`; return; }
+
     try {
-        // Gebäude für die Schattenberechnung nachladen
+        // Gebäude für die Schattenberechnung nachladen (außerhalb Wiens oder ohne Kachel)
         const data = await loadBuildings(lat, lng);
         if (place !== mine) return;
         if (!data.elements.length) throw new Error('keine Gebäude');
