@@ -8,13 +8,16 @@ import argparse
 import json
 import statistics
 import sys
+import time
 import urllib.parse
 import urllib.request
 
 # Innere Stadt als Rechteck (lon/lat), schneidet Randstücke der Nachbarbezirke mit
 BBOX = (16.355, 48.200, 16.386, 48.2185)
 WFS = 'https://data.wien.gv.at/daten/geo'
-OVERPASS = 'https://overpass-api.de/api/interpreter'
+# wie .github/workflows/update-wien.yml: der Hauptserver antwortet oft mit 504
+OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://lz4.overpass-api.de/api/interpreter',
+            'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter']
 UA = 'SunCafe-Spike/1.0 (https://github.com/NicoFuchsGIT/SunCafe)'
 # wie js/config.js und js/shade.js
 DEFAULT_HEIGHT = 15
@@ -28,6 +31,25 @@ def get(url, data=None):
         return json.load(r)
 
 
+def overpass(q, rounds=3):
+    """Fragt die Server reihum, bis einer antwortet; der letzte Fehler wird weitergereicht."""
+    data = urllib.parse.urlencode({'data': q}).encode()
+    for r in range(rounds):
+        for url in OVERPASS:
+            try:
+                res = get(url, data)
+                if not res.get('remark'):  # Overpass meldet Laufzeitfehler im JSON statt per Status
+                    return res['elements']
+                err = RuntimeError(res['remark'])
+            except Exception as e:  # noqa: BLE001 – Timeout, 429, 504, kaputtes JSON: nächster Server
+                err = e
+            print(f'Overpass {url}: {err}', file=sys.stderr)
+            time.sleep(5)
+        if r < rounds - 1:
+            time.sleep(30)
+    raise err
+
+
 def fetch_wien(layer, bbox=BBOX):
     # WFS 1.0.0, damit GeoJSON in EPSG:4326 lon/lat-Reihenfolge kommt; ohne CRS-Suffix liest der Server die bbox im Landes-CRS
     q = {'service': 'WFS', 'request': 'GetFeature', 'version': '1.0.0', 'typeName': layer,
@@ -38,7 +60,7 @@ def fetch_wien(layer, bbox=BBOX):
 def fetch_osm():
     w, s, e, n = BBOX
     q = f'[out:json][timeout:180];way["building"]({s},{w},{n},{e});out tags geom;'
-    return get(OVERPASS, urllib.parse.urlencode({'data': q}).encode())['elements']
+    return overpass(q)
 
 
 def outer_rings(geom):

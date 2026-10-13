@@ -1,6 +1,8 @@
 """Aufruf: python3 -m unittest discover pipeline"""
 import unittest
+from unittest import mock
 
+import spike_heights
 from spike_heights import match, osm_height, report
 
 SQUARE = [(0, 0), (0.002, 0), (0.002, 0.002), (0, 0.002), (0, 0)]
@@ -26,6 +28,19 @@ class SpikeTest(unittest.TestCase):
         self.assertEqual([(h, el['id']) for h, el in m], [(25.0, 1)])
         self.assertIn('| height | 1 | 100% | 5.0 | -5.0 | 0% |', report(wien, osm, m, 'O_KOTE', 'U_KOTE'))
 
+
+    def test_overpass_falls_back_to_next_server(self):
+        # 504 vom ersten Server, Laufzeitfehler (remark) vom zweiten, Antwort vom dritten
+        answers = [OSError('504'), {'remark': 'runtime error', 'elements': []}, {'elements': [1]}]
+        def fake(url, data=None):
+            a = answers.pop(0)
+            if isinstance(a, Exception):
+                raise a
+            return a
+        with mock.patch.object(spike_heights, 'get', fake), mock.patch('time.sleep'), mock.patch('sys.stderr'):
+            self.assertEqual(spike_heights.overpass('q'), [1])
+            with mock.patch.object(spike_heights, 'get', mock.Mock(side_effect=OSError('down'))):
+                self.assertRaises(OSError, spike_heights.overpass, 'q', 1)
 
 if __name__ == '__main__':
     unittest.main()
