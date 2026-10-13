@@ -14,9 +14,8 @@ import math
 import os
 import re
 import sys
-import urllib.parse
 
-from spike_heights import OVERPASS, fetch_wien, get, match, osm_height
+from spike_heights import fetch_wien, match, osm_height, overpass
 from terrain import FAR_ZOOM, NEAR_ZOOM, dem
 
 # wie js/config.js
@@ -292,7 +291,7 @@ def bbox(places):
 def fetch_buildings(box):
     w, s, e, n = box
     q = f'[out:json][timeout:600];way["building"]({s},{w},{n},{e});out tags geom;'
-    return get(OVERPASS, urllib.parse.urlencode({'data': q}).encode())['elements']
+    return overpass(q)
 
 
 def fetch_wien_tiles(box, step=0.01):
