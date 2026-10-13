@@ -192,7 +192,7 @@ GitHub Actions (Python, cron)          Vercel (statisch + Functions)          Br
 
 ## 12. Offene Fragen
 
-1. Welcher Wiener Gebäudedatensatz (Format, LoD, Aktualität, Lizenztext) wird genutzt? Klärung im Spike in Phase 2.
-2. Welche DGM-Auflösung ist für den Horizont nötig (Nahbereich fein, Fernhorizont grob)?
+1. ~~Welcher Wiener Gebäudedatensatz wird genutzt?~~ Geklärt in [SPIKE-2.1](SPIKE-2.1.md): Baukörpermodell der Flächen-Mehrzweckkarte (LoD0.4), CC BY 4.0. Den Lizenztext vor Aufgabe 2.8 noch verlinken.
+2. Welche DGM-Auflösung ist für den Horizont nötig? Die Gebäude bringen ihre Geländehöhe mit, siehe [SPIKE-2.1](SPIKE-2.1.md). Die Auflösung für den Geländehorizont klärt Aufgabe 2.4.
 3. Welcher Free-KV für Votes? Entscheidung beim Start von Phase 3 nach aktuellem Free-Tier-Vergleich.
 4. Bekommen Bars und Restaurants im Wien-Datensatz auch Horizontmasken? Das wären rund 5.100 statt rund 1.900 Orte, und die Datei würde entsprechend größer.
