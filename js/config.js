@@ -25,7 +25,7 @@ export const STEP_MIN = 30, MIN_ALT = 0;
 export const SUN_WINDOW_MIN = 120, SUN_STEP_MIN = 5;
 
 // Ketten, die nicht angezeigt werden
-export const BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','unbekannt','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];
+export const BAD_CHAINS = ['der mann','aida','felber','ströck','stroeck','anker','tchibo', 'geier', 'admiral sportsbar', 'wild bean cafe'];
 export const DAYS = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 // Ketten nur als ganze Wörter erkennen, sonst trifft 'anker' auch 'Schmankerl' (Unicode-fähig wegen 'ströck')
 export const BAD_CHAIN_RE = new RegExp('(?<![\\p{L}\\p{N}])(' + BAD_CHAINS.join('|') + ')(?![\\p{L}\\p{N}])', 'iu');

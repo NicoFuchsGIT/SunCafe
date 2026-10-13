@@ -63,7 +63,7 @@ map.on('load', () => {
             'circle-stroke-color':'#ffffff'}});
     map.addSource('terr', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
     map.addLayer({id:'terr', type:'circle', source:'terr', paint:{'circle-radius':6, 'circle-color':['match',['get','s'],'sun','#ffb703','#6c7a89'], 'circle-stroke-width':2.5, 'circle-stroke-color':'#14213d'}});
-    map.on('click', 'cafes', e => { openPopup(e.features[0].properties.id); });
+    map.on('click', 'cafes', e => { const id = e.features[0].properties.id; openPopup(id); markList(id, true); });
     map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
     map.on('mouseleave','cafes',()=>map.getCanvas().style.cursor='');
     mapReady = true;
@@ -116,7 +116,7 @@ function update() {
     const L = $('list'); L.innerHTML = '';
     for (const c of rows.slice(0, 80)) {
         const li = document.createElement('li'); li.tabIndex = 0;
-        li.className = c.info.o === 0 ? 'closed' : '';
+        li.className = c.info.o === 0 ? 'closed' : ''; li.dataset.id = c.id;
         li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="meta"><span class="sm"></span><span class="dist">${c.dist < 1000 ? Math.round(c.dist) + ' m' : (c.dist/1000).toFixed(1) + ' km'}</span></span>`;
         if (c.sunMin != null) li.querySelector('.sm').textContent = '☀️ ' + c.sunMin + ' min';
         li.querySelector('.nm').textContent = c.name;
@@ -127,6 +127,14 @@ function update() {
     }
     $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '') + (cafes.some(c => !c.calc) ? ' · Schatten wird berechnet ...' : '');
     if (popup && popup._cid) openPopup(popup._cid);
+}
+// Café in der Liste markieren, bei Klick auf der Karte auch hinscrollen; id null hebt die Markierung auf
+function markList(id, scroll = false) {
+    for (const li of $('list').children) {
+        const on = li.dataset.id === id;
+        li.classList.toggle('sel', on);
+        if (on && scroll) li.scrollIntoView({block:'nearest', behavior:'smooth'});
+    }
 }
 const stateText = c => c.state === 'sun' && c.partial ? 'Teils Sonne' : ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
 function openPopup(id) {
@@ -158,7 +166,8 @@ function openPopup(id) {
     popup = new maplibregl.Popup({closeButton:true, closeOnClick:false, offset:12}).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
     popup._cid = id;
     showTerr(c);
-    popup.on('close', () => { if (popup && popup._cid === id) { popup._cid = null; map.getSource('terr').setData({type:'FeatureCollection', features:[]}); } });
+    markList(id);
+    popup.on('close', () => { if (popup && popup._cid === id) { popup._cid = null; markList(null); map.getSource('terr').setData({type:'FeatureCollection', features:[]}); } });
 }
 
 // ---------- Wetter ----------

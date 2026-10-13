@@ -165,7 +165,7 @@ export function parseCafes(data, lat0, lng0, rg, ptype = 'cafe') {
         let ok = (am === 'cafe' || sh === 'bakery');
         if (ptype === 'bar' || ptype === 'rest') ok = ok || am === 'bar' || am === 'pub';
         if (ptype === 'rest') ok = ok || am === 'restaurant';
-        return ok && !BAD_CHAIN_RE.test(e.tags.name || 'unbekannt');
+        return ok && !BAD_CHAIN_RE.test(e.tags.name || '');
     }).map(e => {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
