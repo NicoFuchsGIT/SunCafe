@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 import points
-from points import (BAD_CHAIN_RE, M_PER_DEG, attach_points, facade_points, horizon_mask, kx_at, parse_places, poly_contains,
+from points import (BAD_CHAIN_RE, M_PER_DEG, attach_points, check, count_places, facade_points, horizon_mask, kx_at, parse_places, poly_contains,
                     seg_dist, tile_key, write_tiles)
 
 LAT, LNG = 48.2, 16.37
@@ -80,6 +80,19 @@ class PointsTest(unittest.TestCase):
             finally:
                 points.MAX_GZIP = old
             self.assertFalse(os.path.exists(os.path.join(d, 'neu')))  # nichts halb geschrieben
+            stale = os.path.join(d, '0_0.json')
+            open(stale, 'w').close()
+            write_tiles(pts, places, d)
+            self.assertFalse(os.path.exists(stale))  # veraltete Kacheln verschwinden
+            self.assertEqual(count_places(d), 1)
+
+    def test_check_rejects_implausible_runs(self):
+        ok = {str(i): [{'mask': [0] * 179 + [5]}] for i in range(10)}
+        check(ok, 2000, 1500, old_places=12)
+        for args in [(ok, 500, 500), (ok, 2000, 100), ({**ok, **{str(i): [{'mask': [0] * 180}] for i in range(6)}}, 2000, 1500),
+                     (ok, 2000, 1500, 20)]:
+            with self.assertRaises(SystemExit):
+                check(*args)
 
     def test_shared_fixtures_match_js(self):
         # gleiche Szenen wie test/fixtures.test.mjs (PRD §11); Aufbau wie dort beschrieben

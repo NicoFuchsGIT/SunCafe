@@ -13,6 +13,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 
 from spike_heights import fetch_wien, match, osm_height, overpass
@@ -262,7 +263,8 @@ def write_tiles(pts, places, out_dir):
     """Messpunkte als Kacheln <out_dir>/<tile_key>.json: Ort-ID → [{x, y, label, kind, enclosed?, mask}].
 
     x, y auf 0,1 m gerundet, Maske als Base64 der 180 uint8. Bricht ab, bevor etwas geschrieben ist,
-    wenn alle Kacheln zusammen gzip-komprimiert größer als MAX_GZIP wären.
+    wenn alle Kacheln zusammen gzip-komprimiert größer als MAX_GZIP wären. Ersetzt out_dir als Ganzes,
+    damit keine veralteten Kacheln liegen bleiben.
     """
     tiles = {}
     for c in places:
@@ -274,11 +276,39 @@ def write_tiles(pts, places, out_dir):
     size = sum(len(gzip.compress(b)) for b in blobs.values())
     if size > MAX_GZIP:
         raise SystemExit(f'Kacheln zu groß: {size} B gzip > {MAX_GZIP}')
-    os.makedirs(out_dir, exist_ok=True)
+    tmp = out_dir.rstrip('/') + '.neu'
+    shutil.rmtree(tmp, ignore_errors=True)
+    os.makedirs(tmp)
     for k, b in blobs.items():
-        with open(os.path.join(out_dir, k + '.json'), 'wb') as f:
+        with open(os.path.join(tmp, k + '.json'), 'wb') as f:
             f.write(b)
+    shutil.rmtree(out_dir, ignore_errors=True)
+    os.replace(tmp, out_dir)
     return size
+
+
+def count_places(out_dir):
+    """Anzahl Orte in den bisherigen Kacheln, 0 wenn es keine gibt."""
+    if not os.path.isdir(out_dir):
+        return 0
+    n = 0
+    for name in os.listdir(out_dir):
+        with open(os.path.join(out_dir, name), encoding='utf-8') as f:
+            n += len(json.load(f))
+    return n
+
+
+def check(pts, n_buildings, n_heights, old_places=0):
+    """Plausibilitätschecks vor dem Schreiben (PRD F2.6); bricht mit allen Befunden ab."""
+    flat = sum(not any(any(p['mask']) for p in ps) for ps in pts.values())
+    errs = [msg for bad, msg in [
+        (n_buildings < 1000, f'nur {n_buildings} Gebäude von Overpass, Abruf wohl unvollständig'),
+        (n_heights < n_buildings / 2, f'nur {n_heights} von {n_buildings} Gebäuden mit Wien-Höhe, WFS wohl ausgefallen'),
+        (flat > len(pts) / 2, f'{flat} von {len(pts)} Orten ohne jeden Horizont, Gebäude fehlen wohl'),
+        (len(pts) < old_places * 7 / 10, f'nur {len(pts)} Orte statt bisher {old_places} (< 70 %)'),
+    ] if bad]
+    if errs:
+        raise SystemExit('Plausibilitätscheck fehlgeschlagen, alte Kacheln bleiben:\n- ' + '\n- '.join(errs))
 
 
 def bbox(places):
@@ -329,6 +359,7 @@ def main():
     print(f'{len(heights)} von {len(buildings)} Gebäuden mit Wien-Höhe', file=sys.stderr)
     pts = attach_points(places, buildings, heights, terrain=(dem(NEAR_ZOOM), dem(FAR_ZOOM)))
     if a.out:
+        check(pts, len(buildings), len(heights), count_places(a.out))
         print(f'Kacheln: {write_tiles(pts, places, a.out)} B gzip', file=sys.stderr)
     json.dump(pts, sys.stdout, ensure_ascii=False, separators=(',', ':'))
 

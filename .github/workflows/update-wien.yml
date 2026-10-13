@@ -79,3 +79,30 @@ jobs:
             git commit -m "Wien-Daten aktualisiert"
             git push
           fi
+  # Phase 2.7: Horizontmasken neu rechnen; schlägt ein Plausibilitätscheck fehl, bleiben die alten Kacheln im Repo.
+  # Einzeln wiederholbar über "Re-run failed jobs", ohne die Orte neu zu laden.
+  horizon:
+    needs: update-data
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Repository auschecken (inkl. frisch aktualisierter wien.json)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Pipeline ausführen
+        run: python3 pipeline/points.py --out data/horizon > /dev/null
+
+      - name: Kacheln ins Repo schreiben (nur bei Änderungen)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data/horizon
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen"
+          else
+            git commit -m "Horizontmasken Wien aktualisiert"
+            git pull --rebase
+            git push
+          fi
