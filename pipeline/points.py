@@ -13,6 +13,7 @@ import sys
 import urllib.parse
 
 from spike_heights import OVERPASS, fetch_wien, get, match, osm_height
+from terrain import FAR_ZOOM, NEAR_ZOOM, dem
 
 # wie js/config.js
 SHADOW_REACH = 300
@@ -180,12 +181,34 @@ def horizon_mask(pt, blds, eye=0):
     return mask
 
 
-def attach_points(places, buildings, heights=None, eye=EYE_HEIGHT):
+TERRAIN_REACH = 20000
+TERRAIN_FAR_FROM = 2000  # ab hier das grobe Raster
+EARTH_R = 6371000
+REFRACTION = 0.13
+
+
+def terrain_mask(lat, lng, near, far, eye=EYE_HEIGHT):
+    """Höhenwinkel des Geländes je Sektor bis 20 km, mit Erdkrümmung und Refraktion."""
+    kx, z0, mask = kx_at(lat), near(lat, lng) + eye, [0] * HORIZON_SECTORS
+    for s in range(HORIZON_SECTORS):
+        dx, dy = math.sin(s * SECTOR), math.cos(s * SECTOR)
+        best, d = 0, 10
+        while d <= TERRAIN_REACH:
+            z = (near if d < TERRAIN_FAR_FROM else far)(lat + dy * d / M_PER_DEG, lng + dx * d / kx)
+            best = max(best, (z - z0 - d * d * (1 - REFRACTION) / (2 * EARTH_R)) / d)
+            # shortcut: Schrittweite wächst mit der Entfernung (2,5 %), schmale Grate weit draußen können durchrutschen; bei Bedarf feiner
+            d += max(10, d / 40)
+        mask[s] = math.floor(math.atan(best) / MASK_STEP + 0.5)
+    return mask
+
+
+def attach_points(places, buildings, heights=None, eye=EYE_HEIGHT, terrain=None):
     """Wie attachBuildings in js/shade.js plus attachMasks in js/horizon.js.
 
     buildings: Overpass-Ways mit geometry; heights: OSM-ID → Wien-Höhe, sonst gilt die OSM-Höhe.
+    terrain: (near, far) Höhe(lat, lng); dann zählen Geländehorizont und Geländeunterschied zu den Gebäuden.
     """
-    heights = heights or {}
+    heights, near = heights or {}, terrain[0] if terrain else (lambda lat, lng: 0)
     # Raster über den ersten Eckpunkt, Zelle so groß wie die Suchbox des Clients
     cell = (SHADOW_REACH + 150) / M_PER_DEG
     grid = {}
@@ -193,14 +216,15 @@ def attach_points(places, buildings, heights=None, eye=EYE_HEIGHT):
         if b.get('type') == 'way' and (b.get('tags') or {}).get('building') and b.get('geometry'):
             g0 = b['geometry'][0]
             h = heights.get(b.get('id')) or osm_height(b['tags'])[0]
-            grid.setdefault((int(g0['lat'] // cell), int(g0['lon'] // cell)), []).append((h, b['geometry']))
+            grid.setdefault((int(g0['lat'] // cell), int(g0['lon'] // cell)), []).append((h + near(g0['lat'], g0['lon']), b['geometry']))
     for c in places:
         kx, ky = kx_at(c['lat']), M_PER_DEG
         ci, cj, dj = int(c['lat'] // cell), int(c['lng'] // cell), math.ceil(ky / kx)
-        c['owns'], loc = [], []
+        c['owns'], loc, z0 = [], [], near(c['lat'], c['lng'])
         for i in range(ci - 1, ci + 2):
             for j in range(cj - dj - 1, cj + dj + 2):
-                for h, g in grid.get((i, j), ()):
+                for top, g in grid.get((i, j), ()):
+                    h = top - z0
                     if abs((g[0]['lon'] - c['lng']) * kx) > SHADOW_REACH + 150 or abs((g[0]['lat'] - c['lat']) * ky) > SHADOW_REACH + 150:
                         continue
                     pts = [((p['lon'] - c['lng']) * kx, (p['lat'] - c['lat']) * ky) for p in g]
@@ -212,9 +236,13 @@ def attach_points(places, buildings, heights=None, eye=EYE_HEIGHT):
                         loc.append({'h': h, 'pts': pts, 'd': seg_dist(pts)})
         c['near'] = [b for b in loc if b['d'] < 45]
         c['pts'] = terrace_points(c, kx, ky)
+        # shortcut: Geländehorizont einmal je Ort statt je Messpunkt (Punkte liegen ≤ 30 m auseinander); bei steilen Lagen je Punkt rechnen
+        tm = terrain_mask(c['lat'], c['lng'], *terrain, eye) if terrain else None
         for pt in c['pts']:
             pt['skip'] = [b for b in c['near'] + c['owns'] if poly_contains(b['pts'], pt['x'], pt['y'])]
             pt['mask'] = horizon_mask(pt, loc + c['owns'], eye)  # das eigene Gebäude wirft Schatten auf die Terrasse
+            if tm:
+                pt['mask'] = list(map(max, pt['mask'], tm))
     return {c['id']: [{k: round(v, 2) if isinstance(v, float) else v for k, v in p.items() if k != 'skip'}
                       for p in c['pts']] for c in places}
 
@@ -264,7 +292,7 @@ def main():
         wien = fetch_wien_tiles(box)
     heights = {el['id']: h for h, el in match(wien, buildings, 'O_KOTE', 'HOEHE_DGM')}
     print(f'{len(heights)} von {len(buildings)} Gebäuden mit Wien-Höhe', file=sys.stderr)
-    json.dump(attach_points(places, buildings, heights), sys.stdout, ensure_ascii=False, separators=(',', ':'))
+    json.dump(attach_points(places, buildings, heights, terrain=(dem(NEAR_ZOOM), dem(FAR_ZOOM))), sys.stdout, ensure_ascii=False, separators=(',', ':'))
 
 
 if __name__ == '__main__':

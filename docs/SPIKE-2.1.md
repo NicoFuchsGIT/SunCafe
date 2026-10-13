@@ -8,8 +8,8 @@ Ziel laut [ROADMAP](ROADMAP.md): Datensatz und DGM finden, Lizenz prüfen, 1. Be
 |---|---|---|---|---|
 | Gebäudehöhen | Stadt Wien, Baukörpermodell der Flächen-Mehrzweckkarte (LoD0.4, Baukörper mit Ober- und Unterkante in m ü. A.) | WFS `data.wien.gv.at/daten/geo`, Layer `ogdwien:FMZKBKMOGD` | CC BY 4.0, Namensnennung „Stadt Wien – data.wien.gv.at“ | bestätigt: 678 547 Baukörper; Höhe = `O_KOTE` − `HOEHE_DGM` (beide über Wiener Null), `U_KOTE` ist meist leer; bbox braucht den Zusatz `,EPSG:4326` |
 | Gebäude 3D (Alternative) | Stadt Wien, Gebäudemodell LoD2 (CityGML) | Kachel-Downloads, data.gv.at | CC BY 4.0 | nur falls LoD0.4 nicht reicht, deutlich aufwendiger |
-| Gelände Nahbereich | Stadt Wien, Geländemodell (Raster, ca. 1 m) | data.gv.at, GeoTIFF-Kacheln | CC BY 4.0 | Auflösung und Kachelschema prüfen |
-| Fernhorizont | DGM Österreich 10 m (geoland.at / basemap.at) | data.gv.at | CC BY 4.0 | für den groben 50-m-Raster bis 20 km (Aufgabe 2.4) |
+| Gelände Nahbereich | Stadt Wien, Geländemodell (Raster, ca. 1 m) | data.gv.at, GeoTIFF-Kacheln | CC BY 4.0 | nicht genutzt: der WCS der Stadt hat keine Coverages, GeoTIFF bräuchte eine Zusatzbibliothek |
+| Gelände (genutzt, 2.4) | Terrain Tiles (AWS Open Data, Terrarium-PNG), in Österreich aus dem DGM 10 m | `s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png` | Quellen laut Terrain-Tiles-Doku nennen (u. a. data.gv.at, CC BY 4.0) | Zoom 13 (ca. 13 m) bis 2 km, Zoom 11 (ca. 51 m) bis 20 km; Stephansplatz 171,8 m, Prater 160,8 m (Geländehöhe ohne Gebäude) |
 
 Die Lizenzangaben sind der bekannte Stand der Wiener OGD. Vor Phase 2.8 den Lizenztext auf den Datensatzseiten nachlesen und hier verlinken.
 
