@@ -6,12 +6,12 @@ Ziel laut [ROADMAP](ROADMAP.md): Datensatz und DGM finden, Lizenz prüfen, 1. Be
 
 | Zweck | Datensatz | Zugang | Lizenz | Status |
 |---|---|---|---|---|
-| Gebäudehöhen | Stadt Wien, Baukörpermodell der Flächen-Mehrzweckkarte (LoD0.4, Baukörper mit Oberkante `O_KOTE` und Geländehöhe `HOEHE_DGM`, beide in m über Wiener Null) | WFS `data.wien.gv.at/daten/geo`, Layer `ogdwien:FMZKBKMOGD` | CC BY 4.0, Namensnennung „Stadt Wien – data.wien.gv.at“ | bestätigt, Höhe = `O_KOTE` − `HOEHE_DGM`. `U_KOTE` ist nur bei Überbauungen und Flugdächern gefüllt (Unterkante). |
-| Gebäude 3D (Alternative) | Stadt Wien, Gebäudemodell LoD2 (CityGML) | Kachel-Downloads, data.gv.at | CC BY 4.0 | nur falls LoD0.4 nicht reicht, deutlich aufwendiger |
-| Gelände Nahbereich | Stadt Wien, Geländemodell (Raster, ca. 1 m) | data.gv.at, GeoTIFF-Kacheln | CC BY 4.0 | Auflösung und Kachelschema prüfen |
-| Fernhorizont | DGM Österreich 10 m (geoland.at / basemap.at) | data.gv.at | CC BY 4.0 | für den groben 50-m-Raster bis 20 km (Aufgabe 2.4) |
+| Gebäudehöhen | [Baukörpermodell (LOD0.4) aus der Flächen-MZK Wien](https://www.data.gv.at/katalog/datasets/76c2e577-268f-4a93-bccd-7d5b43b14efd), Stand 11/2025. Baukörper mit Oberkante `O_KOTE` und Geländehöhe `HOEHE_DGM` in m über Wiener Null | WFS `data.wien.gv.at/daten/geo`, Layer `ogdwien:FMZKBKMOGD` | CC BY 4.0 | geprüft, Höhe = `O_KOTE` − `HOEHE_DGM`. `U_KOTE` ist nur bei Überbauungen und Flugdächern gefüllt (Unterkante). |
+| Gebäude 3D (Alternative) | [Generalisiertes Dachmodell (LOD2.1) Wien](https://www.data.gv.at/katalog/datasets/86d88cae-ad97-4476-bae5-73488a12776d) | Kachel-Downloads | CC BY 4.0 | nicht nötig, siehe Entscheidung 1 |
+| Gelände Wien | [Geländemodell Raster Wien](https://www.data.gv.at/katalog/datasets/1eda4b16-05e3-43c3-b5b0-ef8276df0701), Stand 11/2025 | Kacheln zu 2,5 × 2,5 km (Name z. B. `35_4`), ASCII-Grid oder GeoTIFF, EPSG:31256, ca. 20 MB zip je Kachel, `https://www.wien.gv.at/ma41datenviewer/downloads/geodaten/dgm_asc/<Blatt>_dgm_asc.zip` | CC BY 4.0 | geprüft mit Blatt 35/4: 1 m, 2501 × 2501 Zellen, Höhen in m über Wiener Null (ca. 6,4 m am Donaukanal) |
+| Fernhorizont | [DGM Österreich 10 m](https://www.data.gv.at/katalog/datasets/d88a1246-9684-480b-a480-ff63286b35b7) (geoland.at) | eine Datei für ganz Österreich, GeoTIFF, EPSG:31287, `https://gis.ktn.gv.at/OGD/Geographie_Planung/ogd-10m-at.zip` | CC BY 4.0 | laut Katalog geprüft. Download aus der Sandbox geblockt, Größe und Höhenbezug (vermutlich m ü. A.) in Aufgabe 2.4 aus GitHub Actions prüfen |
 
-Die Lizenzangaben sind der bekannte Stand der Wiener OGD. Vor Phase 2.8 den Lizenztext auf den Datensatzseiten nachlesen und hier verlinken.
+Lizenzen laut den data.gv.at-Einträgen oben: alle [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.de). Namensnennung für Aufgabe 2.8: „Datenquelle: Stadt Wien – data.wien.gv.at“ und „Datenquelle: geoland.at“.
 
 ## Höhenvergleich 1. Bezirk
 
@@ -51,4 +51,4 @@ Erkenntnisse:
 ## Entscheidungen
 
 1. **LoD0.4 reicht.** Gebäudehöhe = `O_KOTE` − `HOEHE_DGM` aus `ogdwien:FMZKBKMOGD`, pro Baukörper (ein Gebäude besteht aus mehreren Baukörpern mit eigener Höhe, das bildet gestufte Dächer und Türme bereits ab). LoD2 ist für 2°-Sektoren nicht nötig. OSM nur als Fallback außerhalb der Wien-Daten.
-2. **Gelände:** Die Baukörper bringen ihre Geländehöhe (`HOEHE_DGM`) schon mit, für Gebäude im Nahbereich braucht es also kein eigenes DGM. Das DGM braucht es nur für den Geländehorizont selbst. Dafür sind die 10 m von DGM Österreich vermutlich genug (Annahme, in Aufgabe 2.4 gegen das 1-m-Modell der Stadt prüfen). Achtung: Wien-Höhen beziehen sich auf Wiener Null (156,68 m ü. A.), DGM Österreich auf m ü. A. Beim Kombinieren umrechnen.
+2. **Gelände:** Die Baukörper bringen ihre Geländehöhe (`HOEHE_DGM`) schon mit, für Gebäude im Nahbereich braucht es also kein eigenes DGM. Das DGM braucht es nur für den Geländehorizont selbst. Das 1-m-Modell der Stadt endet an der Stadtgrenze, der Wienerwald liegt aber großteils in Niederösterreich. Deshalb DGM Österreich 10 m für den Fernhorizont, auf das 50-m-Raster aus Aufgabe 2.4 vergröbert. Das 1-m-Modell nur, falls sich in 2.4 zeigt, dass Hanglagen innerhalb Wiens feiner gebraucht werden. Achtung: Die Wien-Daten beziehen sich auf Wiener Null (156,68 m ü. A.), DGM Österreich vermutlich auf m ü. A. Beim Kombinieren umrechnen.
