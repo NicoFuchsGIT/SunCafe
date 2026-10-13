@@ -28,9 +28,9 @@ def get(url, data=None):
 
 
 def fetch_wien(layer):
-    # WFS 1.0.0, damit GeoJSON in EPSG:4326 lon/lat-Reihenfolge kommt
+    # WFS 1.0.0, damit GeoJSON in EPSG:4326 lon/lat-Reihenfolge kommt; ohne CRS in der bbox liest der Server sie im Layer-CRS
     q = {'service': 'WFS', 'request': 'GetFeature', 'version': '1.0.0', 'typeName': layer,
-         'srsName': 'EPSG:4326', 'outputFormat': 'json', 'bbox': ','.join(map(str, BBOX))}
+         'srsName': 'EPSG:4326', 'outputFormat': 'json', 'bbox': ','.join(map(str, BBOX)) + ',EPSG:4326'}
     return get(WFS + '?' + urllib.parse.urlencode(q))['features']
 
 
@@ -140,8 +140,9 @@ def report(wien, osm, matched, top, base):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--layer', default='ogdwien:FMZKBKMOGD', help='WFS-Layer Baukörpermodell')
-    ap.add_argument('--top', default='O_KOTE', help='Attribut Oberkante (m ü. A.)')
-    ap.add_argument('--base', default='U_KOTE', help='Attribut Unterkante/Gelände (m ü. A.)')
+    ap.add_argument('--top', default='O_KOTE', help='Attribut Oberkante')
+    # U_KOTE ist nur bei Überbauungen/Flugdächern gefüllt (Unterkante), Gelände steht in HOEHE_DGM
+    ap.add_argument('--base', default='HOEHE_DGM', help='Attribut Geländehöhe')
     a = ap.parse_args()
     wien, osm = fetch_wien(a.layer), fetch_osm()
     if not wien or not osm:
