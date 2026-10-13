@@ -60,7 +60,7 @@ Ziel: echte Gebäudehöhen und Gelände für Wien, vorberechnet und kostenlos.
 
 | # | Aufgabe | Aufwand | PRD |
 |---|---------|---------|-----|
-| 2.1 | **Spike:** Wiener Gebäudedatensatz und DGM finden, Lizenz prüfen, 1. Bezirk laden und Höhen gegen OSM vergleichen | 5 h | F2.2, F2.3 |
+| 2.1 | **Spike:** Wiener Gebäudedatensatz und DGM finden, Lizenz prüfen, 1. Bezirk laden und Höhen gegen OSM vergleichen ([SPIKE-2.1](SPIKE-2.1.md)) | 5 h | F2.2, F2.3 |
 | 2.2 | `pipeline/` (Python): Orte aus `wien.json` lesen, Messpunkte wie im Client erzeugen (Terrasse oder Fassade) | 4 h | F2.1 |
 | 2.3 | Horizontmaske aus Gebäuden (Wien-Höhen, OSM als Fallback) | 5 h | F2.2 |
 | 2.4 | Gelände einrechnen: Nahbereich aus dem DGM, Fernhorizont grob (z. B. 50-m-Raster bis 20 km) | 5 h | F2.3 |
