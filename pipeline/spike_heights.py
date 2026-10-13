@@ -19,6 +19,7 @@ UA = 'SunCafe-Spike/1.0 (https://github.com/NicoFuchsGIT/SunCafe)'
 # wie js/config.js und js/shade.js
 DEFAULT_HEIGHT = 15
 LEVEL_HEIGHT = 3
+CELL = 0.001  # Grad, Rasterweite für die Zuordnung
 
 
 def get(url, data=None):
@@ -27,10 +28,10 @@ def get(url, data=None):
         return json.load(r)
 
 
-def fetch_wien(layer):
-    # WFS 1.0.0, damit GeoJSON in EPSG:4326 lon/lat-Reihenfolge kommt
+def fetch_wien(layer, bbox=BBOX):
+    # WFS 1.0.0, damit GeoJSON in EPSG:4326 lon/lat-Reihenfolge kommt; ohne CRS-Suffix liest der Server die bbox im Landes-CRS
     q = {'service': 'WFS', 'request': 'GetFeature', 'version': '1.0.0', 'typeName': layer,
-         'srsName': 'EPSG:4326', 'outputFormat': 'json', 'bbox': ','.join(map(str, BBOX))}
+         'srsName': 'EPSG:4326', 'outputFormat': 'json', 'bbox': ','.join(map(str, bbox)) + ',EPSG:4326'}
     return get(WFS + '?' + urllib.parse.urlencode(q))['features']
 
 
@@ -80,12 +81,15 @@ def match(wien, osm, top, base):
 
     Max statt Mittel, weil für den Schatten der höchste Teil zählt.
     """
-    ways = []
+    grid = {}  # Raster über die Umriss-Boxen, sonst ist die Zuordnung für ganz Wien quadratisch
     for el in osm:
         ring = [(g['lon'], g['lat']) for g in el.get('geometry', [])]
         if len(ring) >= 3:
             xs, ys = [p[0] for p in ring], [p[1] for p in ring]
-            ways.append((min(xs), min(ys), max(xs), max(ys), ring, el))
+            way = (min(xs), min(ys), max(xs), max(ys), ring, el)
+            for i in range(int(way[0] // CELL), int(way[2] // CELL) + 1):
+                for j in range(int(way[1] // CELL), int(way[3] // CELL) + 1):
+                    grid.setdefault((i, j), []).append(way)
     best = {}
     for f in wien:
         p = f['properties']
@@ -96,7 +100,7 @@ def match(wien, osm, top, base):
             continue
         for ring in outer_rings(f['geometry']):
             c = centroid(ring)
-            for x0, y0, x1, y1, oring, el in ways:
+            for x0, y0, x1, y1, oring, el in grid.get((int(c[0] // CELL), int(c[1] // CELL)), ()):
                 if x0 <= c[0] <= x1 and y0 <= c[1] <= y1 and inside(c, oring):
                     best[el['id']] = (max(h, best.get(el['id'], (0,))[0]), el)
                     break
@@ -141,7 +145,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--layer', default='ogdwien:FMZKBKMOGD', help='WFS-Layer Baukörpermodell')
     ap.add_argument('--top', default='O_KOTE', help='Attribut Oberkante (m ü. A.)')
-    ap.add_argument('--base', default='U_KOTE', help='Attribut Unterkante/Gelände (m ü. A.)')
+    ap.add_argument('--base', default='HOEHE_DGM', help='Attribut Gelände (U_KOTE ist meist leer)')
     a = ap.parse_args()
     wien, osm = fetch_wien(a.layer), fetch_osm()
     if not wien or not osm:
