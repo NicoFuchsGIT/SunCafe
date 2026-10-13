@@ -10,8 +10,8 @@ on:
         description: Attribut Oberkante
         default: O_KOTE
       base:
-        description: Attribut Unterkante
-        default: U_KOTE
+        description: Attribut Gelände
+        default: HOEHE_DGM
 
 permissions:
   contents: read

@@ -6,7 +6,7 @@ Ziel laut [ROADMAP](ROADMAP.md): Datensatz und DGM finden, Lizenz prüfen, 1. Be
 
 | Zweck | Datensatz | Zugang | Lizenz | Status |
 |---|---|---|---|---|
-| Gebäudehöhen | Stadt Wien, Baukörpermodell der Flächen-Mehrzweckkarte (LoD0.4, Baukörper mit Ober- und Unterkante in m ü. A.) | WFS `data.wien.gv.at/daten/geo`, Layer `ogdwien:FMZKBKMOGD` | CC BY 4.0, Namensnennung „Stadt Wien – data.wien.gv.at“ | Layer- und Attributnamen (`O_KOTE`, `U_KOTE`) per Workflow bestätigen |
+| Gebäudehöhen | Stadt Wien, Baukörpermodell der Flächen-Mehrzweckkarte (LoD0.4, Baukörper mit Ober- und Unterkante in m ü. A.) | WFS `data.wien.gv.at/daten/geo`, Layer `ogdwien:FMZKBKMOGD` | CC BY 4.0, Namensnennung „Stadt Wien – data.wien.gv.at“ | bestätigt: 678 547 Baukörper; Höhe = `O_KOTE` − `HOEHE_DGM` (beide über Wiener Null), `U_KOTE` ist meist leer; bbox braucht den Zusatz `,EPSG:4326` |
 | Gebäude 3D (Alternative) | Stadt Wien, Gebäudemodell LoD2 (CityGML) | Kachel-Downloads, data.gv.at | CC BY 4.0 | nur falls LoD0.4 nicht reicht, deutlich aufwendiger |
 | Gelände Nahbereich | Stadt Wien, Geländemodell (Raster, ca. 1 m) | data.gv.at, GeoTIFF-Kacheln | CC BY 4.0 | Auflösung und Kachelschema prüfen |
 | Fernhorizont | DGM Österreich 10 m (geoland.at / basemap.at) | data.gv.at | CC BY 4.0 | für den groben 50-m-Raster bis 20 km (Aufgabe 2.4) |
