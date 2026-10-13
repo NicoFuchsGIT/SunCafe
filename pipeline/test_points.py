@@ -33,6 +33,15 @@ class PointsTest(unittest.TestCase):
             mask = attach_points(places, [way(-5, -5, 5, 5, 7)], heights)['1'][0]['mask']
             self.assertEqual((len(mask), mask[135], mask[45]), (180, q(h), 0))
 
+    def test_terrain_lifts_buildings_and_adds_far_horizon(self):
+        # Westhälfte 6 m höher (Hausgrund), ab 900 m nördlich ein 100-m-Hügel, dahinter (grobes Raster) flach
+        near = lambda lat, lng: (6 if lng < LNG else 0) + (100 if lat > LAT + 900 / M_PER_DEG else 0)
+        places = parse_places({'elements': [node(1, amenity='cafe'), node(2, 10, 0, leisure='outdoor_seating')]})
+        mask = attach_points(places, [way(-5, -5, 5, 5)], terrain=(near, lambda lat, lng: 0))['1'][0]['mask']
+        q = lambda h: round(math.degrees(math.atan2(h - 1.2, 5)) / 90 * 255)
+        self.assertEqual((mask[135], mask[45]), (q(21), 0))
+        self.assertAlmostEqual(mask[0], math.degrees(math.atan(98.8 / 910)) / 90 * 255, delta=1)
+
     def test_facades_skip_neighbour_wall(self):
         # Café in 10×10-Haus, Nachbarhaus schließt im Osten direkt an
         places = parse_places({'elements': [node(1, amenity='cafe')]})
