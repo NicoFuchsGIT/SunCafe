@@ -1,0 +1,39 @@
+name: Spike Wien-Höhen
+
+on:
+  workflow_dispatch: # manuell im Reiter "Actions", Bericht steht in der Zusammenfassung
+    inputs:
+      layer:
+        description: WFS-Layer Baukörpermodell
+        default: ogdwien:FMZKBKMOGD
+      top:
+        description: Attribut Oberkante
+        default: O_KOTE
+      base:
+        description: Attribut Unterkante
+        default: U_KOTE
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Vergleich Wien vs. OSM
+        env:
+          LAYER: ${{ inputs.layer }}
+          TOP: ${{ inputs.top }}
+          BASE: ${{ inputs.base }}
+        run: |
+          python3 pipeline/spike_heights.py --layer "$LAYER" --top "$TOP" --base "$BASE" > bericht.md
+          cat bericht.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Bericht hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: spike-wien-hoehen
+          path: bericht.md
