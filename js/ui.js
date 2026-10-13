@@ -92,7 +92,7 @@ function update() {
     const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
     const rows = [];
     for (const c of cafes) {
-        if (night) c.state = 'night';
+        if (night) { c.state = 'night'; c.res = null; } // sonst färbt showTerr nachts mit dem letzten Tageswert
         else if (!c.calc) c.state = 'pending';
         else {
             c.res = c.pts.map(p => maskShade(p.mask, alt, az)); // Masken-Lookup, keine Strahlengeometrie pro Schieberschritt

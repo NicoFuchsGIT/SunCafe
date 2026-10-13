@@ -8,10 +8,10 @@ SunCafe ist eine Web-App (MapLibre, OpenStreetMap, Vercel), die Cafés und Bäck
 
 Aktueller Stand:
 
-- Die Schattenrechnung läuft komplett im Browser: Ein Strahl zur Sonne wird gegen Gebäude aus den OpenFreeMap-Vektorkacheln geprüft. Fehlt die Höhe, gelten 15 m.
+- Die Schattenrechnung läuft komplett im Browser: Pro Messpunkt wird einmal eine Horizontmaske aus den Gebäuden der OpenFreeMap-Vektorkacheln berechnet, danach ist jeder Zeitpunkt ein Lookup. Fehlt die Höhe, gelten 15 m.
 - Für Wien liegt ein vorab geladener Datensatz bei (`data/wien.json`, ca. 5.100 Orte, Update per GitHub Action). Weltweit wird live über Overpass abgefragt (`api/overpass.js` als Proxy mit Cache).
-- `js/app.js` ist ein Monolith mit rund 600 Zeilen. Es gibt keine Tests.
-- `backend/` (FastAPI, früher auf Render) wird nicht mehr genutzt. Es wurde aufgegeben wegen der Cold Starts im Free Tier und weil die Rechnung im Client ausreichte.
+- Der Code ist in ES-Module unter `js/` aufgeteilt, mit Tests (`node:test`) und CI (Phase 0). Horizontmasken und Sonnenminuten sind umgesetzt (Phase 1).
+- Das frühere `backend/` (FastAPI auf Render) wurde wegen der Cold Starts im Free Tier gelöscht, die Rechnung im Client reicht aus.
 
 ## 2. Vision
 
