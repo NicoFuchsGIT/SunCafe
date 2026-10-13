@@ -1,4 +1,5 @@
 .idea/
 .vercel/
 node_modules/
-.DS_Store__pycache__/
+.DS_Store
+__pycache__/
