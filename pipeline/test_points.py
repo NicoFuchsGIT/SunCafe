@@ -1,4 +1,4 @@
-"""Aufruf: python3 -m unittest discover pipeline"""
+"""Aufruf: pytest pipeline (oder python3 -m unittest discover pipeline)"""
 import base64
 import json
 import math
@@ -7,9 +7,11 @@ import tempfile
 import unittest
 
 import points
-from points import BAD_CHAIN_RE, M_PER_DEG, attach_points, kx_at, parse_places, tile_key, write_tiles
+from points import (BAD_CHAIN_RE, M_PER_DEG, attach_points, facade_points, horizon_mask, kx_at, parse_places, poly_contains,
+                    seg_dist, tile_key, write_tiles)
 
 LAT, LNG = 48.2, 16.37
+SCENES = os.path.join(os.path.dirname(__file__), '..', 'test', 'fixtures', 'scenes.json')
 
 
 def way(x0, y0, x1, y1, i=0):
@@ -78,6 +80,20 @@ class PointsTest(unittest.TestCase):
             finally:
                 points.MAX_GZIP = old
             self.assertFalse(os.path.exists(os.path.join(d, 'neu')))  # nichts halb geschrieben
+
+    def test_shared_fixtures_match_js(self):
+        # gleiche Szenen wie test/fixtures.test.mjs (PRD §11); Aufbau wie dort beschrieben
+        with open(SCENES, encoding='utf-8') as f:
+            scenes = json.load(f)
+        for i, sc in enumerate(scenes):
+            blds = [{**b, 'd': seg_dist(b['pts'])} for b in sc['blds']]
+            own, near = blds[0], [b for b in blds[1:] if b['d'] < 45]
+            facade = [{'x': round(p['x'], 2), 'y': round(p['y'], 2), 'label': p['label'], 'enclosed': p['enclosed']}
+                      for p in facade_points(own, near, [own])]
+            self.assertEqual(facade, sc['expect']['facade'], f'Szene {i}')
+            for p, m in zip(facade + [{'x': 0, 'y': 0}, {'x': 3.33, 'y': -60}], sc['expect']['masks']):
+                pt = {'x': p['x'], 'y': p['y'], 'skip': [b for b in blds if poly_contains(b['pts'], p['x'], p['y'])]}
+                self.assertEqual(horizon_mask(pt, blds, sc['eye']), list(base64.b64decode(m)), f'Szene {i}, Punkt {p}')
 
 
 if __name__ == '__main__':
