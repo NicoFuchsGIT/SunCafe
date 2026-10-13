@@ -63,7 +63,7 @@ map.on('load', () => {
             'circle-stroke-color':'#ffffff'}});
     map.addSource('terr', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
     map.addLayer({id:'terr', type:'circle', source:'terr', paint:{'circle-radius':6, 'circle-color':['match',['get','s'],'sun','#ffb703','#6c7a89'], 'circle-stroke-width':2.5, 'circle-stroke-color':'#14213d'}});
-    map.on('click', 'cafes', e => { const id = e.features[0].properties.id; openPopup(id); markList(id, true); });
+    map.on('click', 'cafes', e => select(e.features[0].properties.id));
     map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
     map.on('mouseleave','cafes',()=>map.getCanvas().style.cursor='');
     mapReady = true;
@@ -92,7 +92,7 @@ function update() {
     const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
     const rows = [];
     for (const c of cafes) {
-        if (night) c.state = 'night';
+        if (night) { c.state = 'night'; c.res = null; } // sonst färbt showTerr nachts mit dem letzten Tageswert
         else if (!c.calc) c.state = 'pending';
         else {
             c.res = c.pts.map(p => maskShade(p.mask, alt, az)); // Masken-Lookup, keine Strahlengeometrie pro Schieberschritt
@@ -113,15 +113,19 @@ function update() {
     for (const c of rows) c.sunMin = sunMinutes(c, track);
     const bySun = $('fsort').value === 'sun', sm = c => c.sunMin ?? -1;
     rows.sort((a, b) => (bySun ? sm(b) - sm(a) : 0) || a.dist - b.dist);
+    // Das gewählte Café steht immer oben, auch wenn es sonst nicht unter den ersten 80 wäre oder ausgefiltert ist
+    const sel = popup && cafes.find(c => c.id === popup._cid);
+    if (sel) sel.sunMin = sunMinutes(sel, track);
+    const shown = sel ? [sel, ...rows.filter(c => c !== sel)] : rows;
     const L = $('list'); L.innerHTML = '';
-    for (const c of rows.slice(0, 80)) {
+    for (const c of shown.slice(0, 80)) {
         const li = document.createElement('li'); li.tabIndex = 0;
         li.className = c.info.o === 0 ? 'closed' : ''; li.dataset.id = c.id;
         li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="meta"><span class="sm"></span><span class="dist">${c.dist < 1000 ? Math.round(c.dist) + ' m' : (c.dist/1000).toFixed(1) + ' km'}</span></span>`;
         if (c.sunMin != null) li.querySelector('.sm').textContent = '☀️ ' + c.sunMin + ' min';
         li.querySelector('.nm').textContent = c.name;
         li.querySelector('.sub').textContent = stateText(c) + (c.hof && c.state !== 'night' ? ' (Innenhof möglich)' : '') + ' · ' + c.info.text;
-        const go = () => { map.flyTo({center:[c.lng, c.lat], zoom:Math.max(map.getZoom(), 16.5)}); openPopup(c.id); };
+        const go = () => { map.flyTo({center:[c.lng, c.lat], zoom:Math.max(map.getZoom(), 16.5)}); select(c.id); };
         li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
         L.appendChild(li);
     }
@@ -136,6 +140,8 @@ function markList(id, scroll = false) {
         if (on && scroll) li.scrollIntoView({block:'nearest', behavior:'smooth'});
     }
 }
+// Café auswählen: Popup öffnen, Liste neu aufbauen (gewähltes Café oben) und hinscrollen
+function select(id) { openPopup(id); update(); markList(id, true); }
 const stateText = c => c.state === 'sun' && c.partial ? 'Teils Sonne' : ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
 function openPopup(id) {
     const c = cafes.find(x => x.id === id); if (!c) return;
