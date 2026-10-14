@@ -1,5 +1,5 @@
 // ---------- Ortszeit und Öffnungszeiten (ohne DOM) ----------
-import {DAYS} from './config.js';
+import {t, dayShort, fmtTime} from './i18n.js';
 
 // Ortszeit: Date, dessen lokale Felder (getHours, getDay …) der Uhrzeit in tz entsprechen (tz aus Open-Meteo)
 let tzFmt = null;
@@ -10,8 +10,8 @@ export const wall = (d, tz) => {
     const p = Object.fromEntries(tzFmt.formatToParts(d).map(x => [x.type, x.value]));
     return new Date(+p.year, p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
 };
-export const fmtT = d => d.toLocaleTimeString('de-AT', {hour:'2-digit', minute:'2-digit'});
-export const fmtD = d => DAYS[d.getDay()] + ' ' + fmtT(d);
+export const fmtT = fmtTime;
+export const fmtD = d => dayShort(d.getDay()) + ' ' + fmtT(d);
 
 // opening_hours-Objekt oder null; braucht die Bibliothek opening_hours als globale Variable
 export function parseHours(raw, lat, lng, rg) {
@@ -21,11 +21,11 @@ export function parseHours(raw, lat, lng, rg) {
 }
 
 export function openInfo(c, d) { // d in Ortszeit (wall)
-    if (!c.oh) return {o:-1, text:'Öffnungszeiten unbekannt'};
+    if (!c.oh) return {o:-1, text:t('hours.unknown')};
     try {
         const next = c.oh.getNextChange(d), nt = next ? (next.toDateString() === d.toDateString() ? fmtT(next) : fmtD(next)) : null;
-        if (c.oh.getUnknown(d)) return {o:-1, text:'Öffnungszeiten unklar' + (c.raw ? ': ' + c.raw : '')};
-        if (c.oh.getState(d)) return {o:1, text:'Geöffnet' + (nt ? ', schließt ' + nt : '')};
-        return {o:0, text:'Geschlossen' + (nt ? ', öffnet ' + nt : '')};
-    } catch(e) { return {o:-1, text:'Öffnungszeiten unlesbar'}; }
+        if (c.oh.getUnknown(d)) return {o:-1, text:t('hours.unclear') + (c.raw ? ': ' + c.raw : '')};
+        if (c.oh.getState(d)) return {o:1, text:nt ? t('hours.openUntil', {when:nt}) : t('hours.open')};
+        return {o:0, text:nt ? t('hours.closedUntil', {when:nt}) : t('hours.closed')};
+    } catch(e) { return {o:-1, text:t('hours.unreadable')}; }
 }
