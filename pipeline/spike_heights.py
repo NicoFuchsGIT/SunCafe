@@ -54,7 +54,15 @@ def fetch_wien(layer, bbox=BBOX):
     # WFS 1.0.0, damit GeoJSON in EPSG:4326 lon/lat-Reihenfolge kommt; ohne CRS-Suffix liest der Server die bbox im Landes-CRS
     q = {'service': 'WFS', 'request': 'GetFeature', 'version': '1.0.0', 'typeName': layer,
          'srsName': 'EPSG:4326', 'outputFormat': 'json', 'bbox': ','.join(map(str, bbox)) + ',EPSG:4326'}
-    return get(WFS + '?' + urllib.parse.urlencode(q))['features']
+    url = WFS + '?' + urllib.parse.urlencode(q)
+    for wait in (10, 30, 90, None):  # der WFS lässt Verbindungen ab und zu ins Leere laufen
+        try:
+            return get(url)['features']
+        except Exception as e:  # noqa: BLE001 – Timeout, 5xx, kaputtes JSON: später noch einmal
+            if wait is None:
+                raise
+            print(f'WFS {bbox}: {e}, neuer Versuch in {wait} s', file=sys.stderr)
+            time.sleep(wait)
 
 
 def fetch_osm():
