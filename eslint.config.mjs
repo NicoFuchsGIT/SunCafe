@@ -3,7 +3,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  {ignores: ['data/', 'node_modules/', '.claude/skills/']}, // installierte Fremd-Skills,
+  {ignores: ['data/', 'node_modules/', '.claude/skills/', 'vendor/']}, // Fremd-Skills und selbst gehostete Bibliotheken
   js.configs.recommended,
   {
     // Bewusst geschluckte Fehler (catch {} als Fallback auf den nächsten Server o. Ä.) sind erlaubt
