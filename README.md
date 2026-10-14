@@ -23,7 +23,9 @@ test/             Tests mit node:test, Start mit `npm ci && npm test` (Node ≥ 
 eslint.config.mjs ESLint-Regeln, Prüfung mit `npm run lint` (vorher einmal `npm install`)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache)
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
-.github/workflows/update-wien.yml   aktualisiert data/wien.json am 1. und 15. jedes Monats
+data/horizon/     vorberechnete Horizontmasken für Wien, eine Datei pro Kachel
+pipeline/         Python-Pipeline für data/horizon (nur Standardbibliothek), Tests mit `pytest pipeline`
+.github/workflows/update-wien.yml   aktualisiert data/wien.json und data/horizon am 1. und 15. jedes Monats
 .github/workflows/ci.yml            Lint und Tests bei jedem Push und Pull Request
 ```
 
@@ -34,8 +36,14 @@ data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Ste
 - Adresssuche und Land/Bundesland für die Feiertage: Nominatim (höchstens 1 Anfrage pro Sekunde, Ergebnis wird lokal gespeichert)
 - Wetter und Zeitzone des Orts: Open-Meteo
 - Sonnenstand: SunCalc, Öffnungszeiten: opening_hours.js
+- Gebäudehöhen Wien: Baukörpermodell der Flächen-Mehrzweckkarte, Stadt Wien Open Government Data (CC BY 4.0)
+- Gelände: Terrain Tiles (AWS Open Data), in Österreich aus dem DGM Österreich (CC BY 3.0 AT)
+
+Wie daraus Sonne und Schatten werden: [docs/METHODIK.md](docs/METHODIK.md).
 
 Daten © OpenStreetMap contributors (ODbL).
+Datenquelle: Stadt Wien – data.wien.gv.at (CC BY 4.0).
+Gelände: © offene Daten Österreichs – Digitales Geländemodell (DGM) Österreich.
 
 ## Hinweise
 

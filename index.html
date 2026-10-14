@@ -71,16 +71,19 @@
         <ul>
             <li>Sonnenstand aus Datum, Uhrzeit und Ort (SunCalc).</li>
             <li>Schatten: Ein Strahl zur Sonne wird gegen die Gebäude der Karte geprüft. Fehlt die Höhe, gelten 15 m.</li>
+            <li>In Wien ist der Horizont vorab berechnet: mit den gemessenen Gebäudehöhen der Stadt Wien und dem Gelände bis 20 km, etwa dem Wienerwald.</li>
             <li>Position: Gibt es in OpenStreetMap eine Terrasse, wird sie benutzt. Sonst werden etwa 4 m vor der Hausfassade Punkte gesetzt, bei Eckhäusern an mehreren Seiten.</li>
             <li>Öffnungszeiten stammen aus OpenStreetMap. Fehlen sie, steht „Öffnungszeiten unbekannt“.</li>
         </ul>
 
         <h3>Grenzen</h3>
-        <p>Das Ergebnis ist eine Näherung. Bäume, Schirme, Markisen, Wolken und genaue Gebäudehöhen sind nicht berücksichtigt. Bei Cafés in Innenhöfen ist die Position unsicher. Die Bewölkung wird nur angezeigt, nicht eingerechnet.</p>
+        <p>Das Ergebnis ist eine Näherung. Bäume, Schirme, Markisen und Wolken sind nicht berücksichtigt, genaue Gebäudehöhen und Gelände nur in Wien. Bei Cafés in Innenhöfen ist die Position unsicher. Die Bewölkung wird nur angezeigt, nicht eingerechnet.</p>
 
         <h3>Daten und Quellen</h3>
         <ul>
             <li>Cafés, Öffnungszeiten, Gebäude: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</li>
+            <li>Gebäudehöhen Wien: Datenquelle: Stadt Wien – <a href="https://data.wien.gv.at" target="_blank" rel="noopener">data.wien.gv.at</a> (CC BY 4.0)</li>
+            <li>Gelände: © offene Daten Österreichs – Digitales Geländemodell (DGM) Österreich (CC BY), über <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a></li>
             <li>Karte: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, dargestellt mit MapLibre</li>
             <li>Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a></li>
             <li>Adresssuche: Nominatim</li>
