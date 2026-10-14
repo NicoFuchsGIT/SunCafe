@@ -11,7 +11,7 @@ Ziel laut [ROADMAP](ROADMAP.md): Datensatz und DGM finden, Lizenz prüfen, 1. Be
 | Gelände Nahbereich | Stadt Wien, Geländemodell (Raster, ca. 1 m) | data.gv.at, GeoTIFF-Kacheln | CC BY 4.0 | nicht genutzt: der WCS der Stadt hat keine Coverages, GeoTIFF bräuchte eine Zusatzbibliothek |
 | Gelände (genutzt, 2.4) | Terrain Tiles (AWS Open Data, Terrarium-PNG), in Österreich aus dem DGM 10 m | `s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png` | Quellen laut Terrain-Tiles-Doku nennen (u. a. data.gv.at, CC BY 4.0) | Zoom 13 (ca. 13 m) bis 2 km, Zoom 11 (ca. 51 m) bis 20 km; Stephansplatz 171,8 m, Prater 160,8 m (Geländehöhe ohne Gebäude) |
 
-Die Lizenzangaben sind der bekannte Stand der Wiener OGD. Vor Phase 2.8 den Lizenztext auf den Datensatzseiten nachlesen und hier verlinken.
+Lizenzen (Stand Oktober 2026, für 2.8 geprüft): Die Stadt Wien stellt [Flächen-Mehrzweckkarte](https://www.wien.gv.at/stadtentwicklung/stadtvermessung/geodaten/fmzk/) und [Baukörpermodell](https://www.wien.gv.at/stadtentwicklung/stadtvermessung/geodaten/bkm/) unter CC BY 4.0 bereit, Namensnennung „Datenquelle: Stadt Wien – data.wien.gv.at“. Für das Gelände verlangt die [Terrain-Tiles-Attribution](https://github.com/tilezen/joerd/blob/master/docs/attribution.md) für Österreich „© offene Daten Österreichs – Digitales Geländemodell (DGM) Österreich“ (CC BY 3.0 AT).
 
 ## Höhenvergleich 1. Bezirk
 
