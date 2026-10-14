@@ -106,6 +106,8 @@ Ziel: 1-Tap-Votes zur Kalibrierung, rechtzeitig zur Terrassensaison.
 
 Erst nach den Phasen 0–3, wie gewünscht.
 
+Detailplan und Entscheidungen: [ROADMAP-DESIGN.md](ROADMAP-DESIGN.md) (Schritte D1–D4, je ein Branch).
+
 - UI-Überarbeitung mobil: Bottom Sheet statt Sidebar, besserer Zeitschieber, Legende
 - Sonnen-Timeline als Balken pro Café (Daten liegen ab Phase 1 vor)
 - „Beste Stunde“-Empfehlung
