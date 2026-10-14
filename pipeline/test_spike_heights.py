@@ -42,5 +42,14 @@ class SpikeTest(unittest.TestCase):
             with mock.patch.object(spike_heights, 'get', mock.Mock(side_effect=OSError('down'))):
                 self.assertRaises(OSError, spike_heights.overpass, 'q', 1)
 
+    def test_fetch_wien_retries(self):
+        calls = [TimeoutError('timed out'), {'features': [1]}]
+        with mock.patch.object(spike_heights, 'get', side_effect=calls), mock.patch.object(spike_heights.time, 'sleep'):
+            self.assertEqual(spike_heights.fetch_wien('x'), [1])
+        with mock.patch.object(spike_heights, 'get', side_effect=TimeoutError('weg')), mock.patch.object(spike_heights.time, 'sleep'):
+            with self.assertRaises(TimeoutError):
+                spike_heights.fetch_wien('x')
+
+
 if __name__ == '__main__':
     unittest.main()
