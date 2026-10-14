@@ -17,7 +17,7 @@ const curTime = () => +$('slider').value ? new Date(t0.getTime() + $('slider').v
 
 // ---------- Karte ----------
 const map = new maplibregl.Map({container:'map', style:STYLE_URL, center:[place.lng, place.lat], zoom:15.5, attributionControl:false});
-map.addControl(new maplibregl.AttributionControl({compact:true, customAttribution:'© OpenStreetMap contributors'}));
+map.addControl(new maplibregl.AttributionControl({compact:true, customAttribution:'© OpenStreetMap · OpenFreeMap · Stadt Wien'}));
 map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right');
 const geo = new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true}, trackUserLocation:false, showUserLocation:false});
 map.addControl(geo, 'top-right');
@@ -159,6 +159,12 @@ function openPopup(id) {
 
     [stateText(c) + (c.calc ? t('state.approx') : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
         const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
+
+    const fb = document.createElement('a');
+    fb.className = 'fb-link'; fb.target = '_blank'; fb.rel = 'noopener'; fb.textContent = t('fb.link');
+    const body = `${c.name || ''} (${c.id})\n${c.lat}, ${c.lng}\n${curTime().toISOString()}\n\n`;
+    fb.href = 'https://github.com/NicoFuchsGIT/SunCafe/issues/new?title=' + encodeURIComponent(t('fb.title', {name: c.name || t('cafe.noName')})) + '&body=' + encodeURIComponent(body);
+    el.appendChild(fb);
 
     // gleiches Café: nur Inhalt tauschen; neues Popup oder setDOMContent holt den Fokus, z. B. vom Schieber
     if (popup && popup._cid === id) { popup._el.replaceChildren(...el.childNodes); showTerr(c); return; }
