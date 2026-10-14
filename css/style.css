@@ -174,3 +174,4 @@ h1 .logo{color:#f5a300;width:.95em;height:.95em}
 #ts-icon{display:inline-block;transition:transform .2s}
 #center-marker .icon{fill:#e63946;stroke:#fff;stroke-width:1.5}
 .maplibregl-ctrl button .icon{width:18px;height:18px;margin:auto}
+.maplibregl-ctrl-group button{color:#14213d}
