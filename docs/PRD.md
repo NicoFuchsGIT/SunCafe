@@ -165,7 +165,7 @@ GitHub Actions (Python, cron)          Vercel (statisch + Functions)          Br
 ```
 
 - **Pipeline:** Python (numpy, shapely, rasterio bzw. pyproj). Das passt zum Data-Science-Hintergrund und läuft kostenlos in GitHub Actions.
-- **Votes:** Vercel Function plus Free-Tier-KV/DB (Kandidaten: Upstash Redis, Cloudflare D1, Turso). Achtung: Supabase Free pausiert Projekte bei Inaktivität, das ist bei geringer Nutzung ungünstig. Die Limits vor der Wahl prüfen.
+- **Votes:** Vercel Function plus **Upstash Redis** (Free Tier, über die Vercel-Marketplace-Integration), angesprochen per REST über `api/_lib/storage.js`. Gewählt gegenüber Cloudflare D1 (würde den Hoster-Wechsel bedeuten) und Turso, weil es zu Vercel passt und keinen Treiber braucht. Die aktuellen Free-Limits vor dem Produktivbetrieb im Upstash-Dashboard prüfen.
 - **Altes `backend/`:** wird **gelöscht**. Der Prototyp bleibt in der Git-History. Die neue Pipeline startet sauber unter `pipeline/`.
 
 ## 10. Datenquellen
@@ -194,5 +194,5 @@ GitHub Actions (Python, cron)          Vercel (statisch + Functions)          Br
 
 1. Welcher Wiener Gebäudedatensatz (Format, LoD, Aktualität, Lizenztext) wird genutzt? Klärung im Spike in Phase 2.
 2. Welche DGM-Auflösung ist für den Horizont nötig (Nahbereich fein, Fernhorizont grob)?
-3. Welcher Free-KV für Votes? Entscheidung beim Start von Phase 3 nach aktuellem Free-Tier-Vergleich.
+3. ~~Welcher Free-KV für Votes?~~ Entschieden: Upstash Redis (siehe §9).
 4. Bekommen Bars und Restaurants im Wien-Datensatz auch Horizontmasken? Das wären rund 5.100 statt rund 1.900 Orte, und die Datei würde entsprechend größer.
