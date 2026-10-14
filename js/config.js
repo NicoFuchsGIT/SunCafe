@@ -21,6 +21,10 @@ export const HORIZON_SECTORS = 180;
 
 export const STEP_MIN = 30, MIN_ALT = 0;
 
+// Votes (PRD F4): Modellversion wird mitgespeichert, Radius für „vor Ort“ in Metern
+export const MODEL_VERSION = '1.0';
+export const VOTE_ONSITE_RADIUS = 150;
+
 // Sonnenminuten (PRD F3.1): Fenster ab dem gewählten Zeitpunkt und Abtastschritt, in Minuten
 export const SUN_WINDOW_MIN = 120, SUN_STEP_MIN = 5;
 

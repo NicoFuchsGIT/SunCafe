@@ -24,6 +24,7 @@ test/             Tests mit node:test, Start mit `npm ci && npm test` (Node ≥ 
 eslint.config.mjs ESLint-Regeln, Prüfung mit `npm run lint` (vorher einmal `npm install`)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache), nimmt nur lat/lng/ptype an und baut die Abfrage selbst
 api/vote.js       Vercel-Funktion: nimmt anonyme Votes an (POST), validiert, Rate-Limit pro Ort+Gerät (30 min), Gerät (20/h) und IP-Hash (60/h), speichert in Upstash
+api/votes-export.js  Vercel-Funktion: CSV-Export aller Votes (GET mit `Authorization: Bearer <VOTES_EXPORT_TOKEN>`), z. B. `curl -H "Authorization: Bearer $TOKEN" https://<domain>/api/votes-export -o votes.csv`; Token in Vercel als VOTES_EXPORT_TOKEN setzen
 api/_lib/storage.js  Adapter für Upstash Redis (REST); Variablen UPSTASH_REDIS_REST_URL/_TOKEN (oder KV_REST_API_*) und VOTE_SALT (zufälliger String, für die Hashes) in Vercel setzen
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
 data/horizon/     vorberechnete Horizontmasken für Wien, eine Datei pro Kachel
