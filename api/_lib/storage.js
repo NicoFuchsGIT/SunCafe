@@ -1,8 +1,13 @@
 // Dünner Adapter um die Upstash-Redis-REST-API (kein SDK, nur fetch). Wer den Anbieter wechselt, tauscht nur diese Datei.
-// Variablen: UPSTASH_REDIS_REST_URL/_TOKEN, bei der Vercel-Integration auch KV_REST_API_URL/_TOKEN.
+// Variablen: UPSTASH_REDIS_REST_URL/_TOKEN, bei der Vercel-Integration KV_REST_API_URL/_TOKEN, ggf. mit selbstgewähltem Präfix (z. B. SunCafeStorage_KV_REST_API_URL).
+// Die Variablen mit READ_ONLY im Namen taugen nicht (kein Schreiben), die REDIS_URL/KV_URL sind keine REST-Adressen.
+const find = suffix => {
+  const k = Object.keys(process.env).find(n => n === suffix || (n.endsWith('_' + suffix) && !n.includes('READ_ONLY')));
+  return k && process.env[k];
+};
 const env = () => ({
-  url: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
+  url: process.env.UPSTASH_REDIS_REST_URL || find('KV_REST_API_URL'),
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || find('KV_REST_API_TOKEN')
 });
 
 const available = () => { const {url, token} = env(); return !!(url && token); };
