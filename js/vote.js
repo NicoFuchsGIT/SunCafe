@@ -34,8 +34,8 @@ export const predicted = c => c.state === 'night' ? 'night' : c.state === 'sun' 
 // Nur „Jetzt“ lässt sich bewerten: die API akzeptiert Zeitstempel nur nahe an der Serverzeit
 export function buildVote(c, {now = new Date(), alt, az, onSite = false, device = deviceId()}) {
     const p = predicted(c);
-    if (!p || !/^(node|way|relation)\/\d+$/.test(c.id)) return null;
-    return {placeId: c.id, deviceId: device, lat: c.lat, lng: c.lng, t: now.toISOString(), vote: null, predicted: p,
+    if (!p || !/^(node|way|relation)\/\d+$/.test(c.osmId)) return null;
+    return {placeId: c.osmId, deviceId: device, lat: c.lat, lng: c.lng, t: now.toISOString(), vote: null, predicted: p,
         sunAlt: alt * 180 / Math.PI, sunAz: ((az * 180 / Math.PI) % 360 + 360) % 360, modelVersion: MODEL_VERSION, onSite};
 }
 

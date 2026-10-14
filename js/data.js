@@ -189,7 +189,7 @@ export function parseCafes(data, lat0, lng0, rg, ptype = 'cafe') {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
         const raw = e.tags.opening_hours;
-        return {id:String(e.id), name:e.tags.name || '', lat, lng, loc:[], calc:false, terr:[], oh:parseHours(raw, lat, lng, rg), raw,
+        return {id:String(e.id), osmId:e.type + '/' + e.id, name:e.tags.name || '', lat, lng, loc:[], calc:false, terr:[], oh:parseHours(raw, lat, lng, rg), raw,
             dist:Math.hypot((lng - lng0) * kx, (lat - lat0) * ky), outdoor:e.tags.outdoor_seating,
             addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
     }).filter(Boolean);

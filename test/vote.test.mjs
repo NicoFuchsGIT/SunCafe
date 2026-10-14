@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {predicted, buildVote, checkOnSite, sendVote} from '../js/vote.js';
 
-const cafe = (o = {}) => ({id: 'node/42', lat: 48.2082, lng: 16.3738, state: 'sun', partial: false, ...o});
+const cafe = (o = {}) => ({id: '42', osmId: 'node/42', lat: 48.2082, lng: 16.3738, state: 'sun', partial: false, ...o});
 
 test('predicted: Zustand wird auf die API-Werte abgebildet', () => {
     assert.equal(predicted(cafe()), 'sun');
@@ -42,4 +42,12 @@ test('sendVote: ok, 429, Fehler', async () => {
     assert.equal(await sendVote({}, 'sun', f(429)), 'limit');
     assert.equal(await sendVote({}, 'sun', f(503)), 'error');
     assert.equal(await sendVote({}, 'sun', async () => { throw new Error('x'); }), 'error');
+});
+
+test('Ein aus Overpass geparstes Café ergibt einen gültigen Vote (OSM-Typ im placeId)', async () => {
+    const {parseCafes} = await import('../js/data.js');
+    const [c] = parseCafes({elements: [{type: 'way', id: 77, center: {lat: 48.2, lon: 16.37}, tags: {amenity: 'cafe', name: 'X'}}]}, 48.2, 16.37, null);
+    c.state = 'shade';
+    const v = buildVote(c, {alt: 0.5, az: 3, device: 'dev-12345678'});
+    assert.equal(v.placeId, 'way/77');
 });
