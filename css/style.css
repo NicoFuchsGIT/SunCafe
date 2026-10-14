@@ -3,7 +3,7 @@ html.dark{--bg:#10151f;--ink:#e8edf4;--mute:#97a3b4;--line:#27303d;--card:#18202
 html.dark .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(.9)}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:"Bricolage Grotesque",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-#app{display:grid;grid-template-columns:360px 1fr;height:100%}
+#app{display:grid;grid-template-columns:360px 1fr;height:100%;height:100dvh} /* dvh: mobil nicht unter der Adressleiste */
 #side{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--bg)}
 #map{height:100%;width:100%}
 header{padding:14px 16px 10px;padding-top:max(14px,env(safe-area-inset-top))}
@@ -33,13 +33,17 @@ li.closed{opacity:.5}
 .sm{font-size:12.5px;font-weight:600;white-space:nowrap}.sm:empty{display:none}
 .dist{font-size:12.5px;color:var(--mute);white-space:nowrap}
 .maplibregl-popup-content{font-family:inherit;color:#14213d;padding:12px 14px;min-width:200px}
-.maplibregl-popup-content b{font-size:15px}
+.maplibregl-popup-content b{display:block;font-size:15px;padding-right:44px} /* Platz für 🗺️ und × */
 .maplibregl-popup-content p{margin:4px 0 0;font-size:13px}
 .maplibregl-popup-close-button{font-size:22px;padding:2px 9px}
 @media(max-width:760px){
     #app{grid-template-columns:1fr;grid-template-rows:46% 54%}
     #map{grid-row:1}#side{grid-row:2;border-right:0;border-top:1px solid var(--line)}
-    header{padding-bottom:4px}.row{margin-top:6px}
+    header{padding-top:14px;padding-bottom:4px}.row{margin-top:6px} /* Header liegt mobil unten, kein Notch-Abstand */
+    /* Bedienelemente nehmen auf kleinen Handys fast die ganze untere Hälfte ein: dort scrollt der Bereich als Ganzes */
+    #side{overflow:auto}#list{flex:none;overflow:visible;padding-bottom:env(safe-area-inset-bottom)}
+    .map-overlay-btn{top:max(12px,env(safe-area-inset-top))}
+    .maplibregl-ctrl-top-right{top:env(safe-area-inset-top)}
 }
 
 /* Info-Dialog */
@@ -136,6 +140,7 @@ html.dark .map-overlay-btn { box-shadow: 0 0 0 1px var(--line); }
     /* Verschiebt den Pin so, dass die SPITZE genau in der Mitte ist */
     transform: translate(-50%, -100%);
     font-size: 42px;
+    line-height: 1;
     pointer-events: none; /* Karte bleibt darunter wischbar! */
     z-index: 20;
     filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.3));
@@ -145,7 +150,7 @@ html.dark .map-overlay-btn { box-shadow: 0 0 0 1px var(--line); }
 /* Der große Bestätigungs-Button unten in der Mitte */
 #confirm-place-btn {
     top: auto;
-    bottom: 30px;
+    bottom: calc(52px + env(safe-area-inset-bottom)); /* über der Attribution */
     left: 50%;
     transform: translateX(-50%);
     background: var(--sun);
@@ -155,7 +160,7 @@ html.dark .map-overlay-btn { box-shadow: 0 0 0 1px var(--line); }
     border-radius: 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
-#confirm-place-btn:hover {
-    transform: translateX(-50%) scale(1.05);
+@media (hover:hover) { /* auf Touch bleibt :hover sonst hängen */
+    #confirm-place-btn:hover { transform: translateX(-50%) scale(1.05); }
 }
 #ptype,#fsort{flex:1 1 200px;min-width:0}
