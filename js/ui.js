@@ -23,6 +23,8 @@ const geo = new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy
 map.addControl(geo, 'top-right');
 geo.on('geolocate', p => setPlace(p.coords.latitude, p.coords.longitude, false));
 
+const icon = n => `<svg class="icon" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+
 // Neuer Knopf: Suchen an der aktuellen Kartenmitte
 class SearchCenterControl {
     onAdd() {
@@ -31,8 +33,7 @@ class SearchCenterControl {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.title = t('pick.title'); this._btn = btn;
-        btn.innerHTML = '📍';
-        btn.style.fontSize = '16px';
+        btn.innerHTML = icon('pin');
         btn.onclick = () => setPicking($('confirm-place-btn').classList.contains('hidden-ui')); // zweiter Klick bricht ab
         this._container.appendChild(btn);
         return this._container;
@@ -113,7 +114,7 @@ function update() {
         const li = document.createElement('li'); li.tabIndex = 0;
         li.className = c.info.o === 0 ? 'closed' : ''; li.dataset.id = c.id;
         li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="meta"><span class="sm"></span><span class="dist">${fmtDist(c.dist)}</span></span>`;
-        if (c.sunMin != null) li.querySelector('.sm').textContent = t('sunmin', {n: c.sunMin});
+        if (c.sunMin != null) li.querySelector('.sm').innerHTML = icon('sun') + ' ' + t('sunmin', {n: c.sunMin});
         li.querySelector('.nm').textContent = c.name || t('cafe.noName');
         li.querySelector('.sub').textContent = stateText(c) + (c.hof && c.state !== 'night' ? t('state.courtyard') : '') + ' · ' + c.info.text;
         const go = () => { map.flyTo({center:[c.lng, c.lat], zoom:Math.max(map.getZoom(), 16.5)}); select(c.id); };
@@ -150,7 +151,7 @@ function openPopup(id) {
     gmapsLink.rel = 'noopener';
     gmapsLink.className = 'gmaps-icon';
     gmapsLink.title = t('gmaps.title');
-    gmapsLink.innerHTML = '🗺️'; // Du kannst auch '🗺️' oder ein SVG einfügen
+    gmapsLink.innerHTML = icon('route');
     el.appendChild(gmapsLink);
 
     const b = document.createElement('b');
@@ -303,7 +304,7 @@ info.addEventListener('click', e => { if (e.target === info) info.close(); }); /
 const mobile = matchMedia('(max-width:760px)');
 function updateSidebarIcon() {
     const c = $('app').classList.contains('collapsed');
-    $('ts-icon').textContent = mobile.matches ? (c ? '▲' : '▼') : (c ? '▶' : '◀');
+    $('ts-icon').style.transform = `rotate(${mobile.matches ? (c ? -90 : 90) : (c ? 0 : 180)}deg)`;
     $('toggle-sidebar').setAttribute('aria-expanded', String(!c));
 }
 updateSidebarIcon();
@@ -325,7 +326,7 @@ $('toggle-sidebar').onclick = () => {
     setTimeout(() => map.resize(), 50);
 };
 
-// Klick auf "✅ Hier suchen"
+// Klick auf "Hier suchen"
 $('confirm-place-btn').onclick = () => {
     const c = map.getCenter();
     setPicking(false);
