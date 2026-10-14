@@ -5,10 +5,12 @@ import {attachBuildings} from './shade.js';
 import {attachMasks, maskShade} from './horizon.js';
 import {sunTrack, sunMinutes} from './sunminutes.js';
 import {wall, fmtD, openInfo} from './hours.js';
+import {deviceId, votedRecently, markVoted, buildVote, checkOnSite, sendVote} from './vote.js';
 import {t, getLang, setLang, applyStatic, fmtDist} from './i18n.js';
 import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes} from './data.js';
 
 // ---------- Zustand ----------
+let voteOnSite = false, voteMsg = {};
 let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, tz = null;
 const $ = id => document.getElementById(id);
 const setStatus = msg => { $('status').textContent = msg; };
@@ -135,6 +137,36 @@ function markList(id, scroll = false) {
 // Café auswählen: Popup öffnen, Liste neu aufbauen (gewähltes Café oben) und hinscrollen
 function select(id) { openPopup(id); update(); markList(id, true); }
 const stateText = c => c.state === 'sun' && c.partial ? t('state.partial') : t('state.' + c.state);
+// „Stimmt das gerade?“ mit drei Knöpfen (F4.1); optional Standortprüfung (F4.4)
+function voteBox(c) {
+    const box = document.createElement('div'); box.className = 'vote';
+    const q = document.createElement('div'); q.className = 'vote-q'; q.textContent = t('vote.q'); box.appendChild(q);
+    const note = txt => { const n = document.createElement('p'); n.className = 'vote-note'; n.textContent = txt; box.appendChild(n); };
+    const sp = SunCalc.getPosition(new Date(), c.lat, c.lng);
+    const payload = +$('slider').value ? null : buildVote(c, {alt: sp.altitude, az: sp.azimuth + Math.PI, device: deviceId()});
+    if (!payload) { if (+$('slider').value) note(t('vote.nowonly')); else box.hidden = true; return box; }
+    if (voteMsg[c.id] || votedRecently(c.id)) { note(t(voteMsg[c.id] || 'vote.thanks')); return box; }
+    const row = document.createElement('div'); row.className = 'vote-row';
+    const btns = ['sun', 'part', 'shade'].map(v => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'vote-btn';
+        b.textContent = {sun: '☀️', part: '⛅', shade: '☁️'}[v] + ' ' + t('vote.' + v); row.appendChild(b);
+        b.onclick = async () => {
+            btns.forEach(x => { x.disabled = true; }); note(t('vote.busy'));
+            payload.onSite = voteOnSite && await checkOnSite(c);
+            const r = await sendVote(payload, v);
+            if (r === 'ok') { markVoted(c.id); voteMsg[c.id] = payload.onSite || !voteOnSite ? 'vote.thanks' : 'vote.thanks.off'; }
+            else if (r === 'limit') voteMsg[c.id] = 'vote.limit';
+            if (popup && popup._cid === c.id) openPopup(c.id); // Inhalt neu aufbauen
+            if (r === 'error') { btns.forEach(x => { x.disabled = false; }); box.lastChild.textContent = t('vote.error'); }
+        };
+        return b;
+    });
+    box.appendChild(row);
+    const lab = document.createElement('label'); lab.className = 'vote-site';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = voteOnSite; cb.onchange = () => { voteOnSite = cb.checked; };
+    lab.append(cb, ' ' + t('vote.onsite')); box.appendChild(lab);
+    return box;
+}
 function openPopup(id) {
     const c = cafes.find(x => x.id === id); if (!c) return;
     const out = t(c.outdoor === 'yes' ? 'out.yes' : c.outdoor === 'no' ? 'out.no' : 'out.unknown');
@@ -159,6 +191,8 @@ function openPopup(id) {
 
     [stateText(c) + (c.calc ? t('state.approx') : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
         const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
+
+    el.appendChild(voteBox(c));
 
     const fb = document.createElement('a');
     fb.className = 'fb-link'; fb.target = '_blank'; fb.rel = 'noopener'; fb.textContent = t('fb.link');

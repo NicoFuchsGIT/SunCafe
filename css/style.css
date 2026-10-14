@@ -176,3 +176,13 @@ h1 .logo{color:#f5a300;width:.95em;height:.95em}
 .maplibregl-ctrl button .icon{width:18px;height:18px;margin:auto}
 .maplibregl-ctrl-group button{color:#14213d}
 .fb-link{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--mute)}
+
+.vote{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+.vote[hidden]{display:none}
+.vote-q{font-size:12.5px;font-weight:600}
+.vote-row{display:flex;gap:6px;margin-top:6px}
+.vote-btn{flex:1;font:inherit;font-size:12.5px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#14213d;cursor:pointer}
+.vote-btn:hover:not(:disabled){border-color:var(--sun)}
+.vote-btn:disabled{opacity:.6;cursor:default}
+.vote-site{display:block;margin-top:6px;font-size:12px;color:var(--mute)}
+.maplibregl-popup-content .vote-note{font-size:12.5px;color:var(--mute)}
