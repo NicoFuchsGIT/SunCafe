@@ -149,7 +149,8 @@ function voteBox(c) {
     const row = document.createElement('div'); row.className = 'vote-row';
     const btns = ['sun', 'part', 'shade'].map(v => {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'vote-btn';
-        b.textContent = {sun: '☀️', part: '⛅', shade: '☁️'}[v] + ' ' + t('vote.' + v); row.appendChild(b);
+        b.classList.add('v-' + v); b.innerHTML = icon({sun: 'sun', part: 'partial', shade: 'shade'}[v]) + ' <span></span>';
+        b.lastChild.textContent = t('vote.' + v); row.appendChild(b);
         b.onclick = async () => {
             btns.forEach(x => { x.disabled = true; }); note(t('vote.busy'));
             payload.onSite = voteOnSite && await checkOnSite(c);
