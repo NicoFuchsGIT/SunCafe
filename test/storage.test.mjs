@@ -19,6 +19,16 @@ test('KV_REST_API_* der Vercel-Integration wird ebenfalls erkannt', () => {
     clearEnv();
 });
 
+test('Vercel-Integration mit eigenem Präfix wird erkannt, Read-only-Token nicht', () => {
+    clearEnv();
+    process.env.SunCafeStorage_KV_REST_API_READ_ONLY_TOKEN = 'ro';
+    process.env.SunCafeStorage_KV_REST_API_URL = 'https://kv.test';
+    assert.equal(storage.available(), false);
+    process.env.SunCafeStorage_KV_REST_API_TOKEN = 't';
+    assert.equal(storage.available(), true);
+    for (const k of Object.keys(process.env)) if (k.startsWith('SunCafeStorage_')) delete process.env[k];
+});
+
 test('Befehle gehen als JSON-Array mit Bearer-Token an Upstash', async t => {
     setEnv();
     let req;
