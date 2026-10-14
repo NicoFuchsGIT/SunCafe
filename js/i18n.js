@@ -1,0 +1,226 @@
+// ---------- Sprache: Wörterbuch DE/EN, t(key), Formate (ohne DOM-Pflicht) ----------
+const LANGS = ['de', 'en'], LOCALE = {de: 'de-AT', en: 'en-GB'};
+const KEY = 'suncafe.lang';
+
+const dict = {
+de: {
+    'doc.title': 'SunCafe – Finde Sonnenplätze',
+    'wx.loading': 'Wetter wird geladen …',
+    'wx.none': 'Wetter nicht verfügbar',
+    'wx.line': '{t} °C · Bewölkung {c} %',
+    'search.ph': 'Adresse suchen, Enter drücken',
+    'search.label': 'Adresse suchen',
+    'slider.label': 'Uhrzeit, bis 48 Stunden voraus',
+    'time.now': 'Jetzt',
+    'sun.below': 'Sonne unter dem Horizont',
+    'sun.alt': 'Sonnenhöhe {deg}°',
+    'f.open': 'Geöffnet',
+    'f.sun': 'Nur Sonne',
+    'ptype.label': 'Kategorie auswählen',
+    'ptype.cafe': '☕️ Nur Cafés & Bäckereien',
+    'ptype.bar': '🍻 Auch Bars & Pubs',
+    'ptype.rest': '🍽️ Alles (inkl. Restaurants)',
+    'sort.label': 'Sortierung',
+    'sort.dist': '📍 Entfernung',
+    'sort.sun': '☀️ meiste Sonne (2 h)',
+    'status.hint': 'Karte antippen oder Adresse suchen, um Cafés zu laden.',
+    'status.loading': 'Lade Cafés …',
+    'status.loadingFrom': 'Lade Daten von {host} …',
+    'status.loadingPlaces': 'Lade neue Orte im Umkreis …',
+    'status.failed': 'Orte konnten nicht geladen werden (Overpass nicht erreichbar).',
+    'status.failedMore': 'Fehler beim Nachladen. Zeige bisherige Orte.',
+    'status.none': 'Bisher keine Orte gefunden.',
+    'status.count': '{n} von {total} Cafés',
+    'status.night': ' · Nacht, keine Sonne',
+    'status.calc': ' · Schatten wird berechnet ...',
+    'status.total': '{n} Orte insgesamt im Speicher.',
+    'status.noShade': '{n} Orte · Schatten derzeit nicht verfügbar',
+    'status.notFound': 'Adresse nicht gefunden.',
+    'list.toggle': 'Liste umschalten',
+    'list.btn': 'Liste',
+    'pick.title': 'Ort manuell wählen',
+    'pick.confirm': '✅ Hier suchen',
+    'cafe.noName': 'Café ohne Namen',
+    'state.sun': 'Sonne',
+    'state.partial': 'Teils Sonne',
+    'state.shade': 'Schatten',
+    'state.night': 'Nacht',
+    'state.pending': 'Schatten nicht berechnet',
+    'state.approx': ' (Gebäudeschatten, Näherung)',
+    'state.courtyard': ' (Innenhof möglich)',
+    'out.yes': 'Außenplätze: ja',
+    'out.no': 'Außenplätze: nein',
+    'out.unknown': 'Außenplätze: unbekannt',
+    'gmaps.title': 'In Google Maps ansehen',
+    'sunmin': '☀️ {n} min',
+    'lbl.Seite Nord': 'Seite Nord', 'lbl.Seite Nordost': 'Seite Nordost', 'lbl.Seite Ost': 'Seite Ost',
+    'lbl.Seite Südost': 'Seite Südost', 'lbl.Seite Süd': 'Seite Süd', 'lbl.Seite Südwest': 'Seite Südwest',
+    'lbl.Seite West': 'Seite West', 'lbl.Seite Nordwest': 'Seite Nordwest',
+    'lbl.Terrasse (OSM)': 'Terrasse (OSM)', 'lbl.Position laut OSM': 'Position laut OSM',
+    'hours.unknown': 'Öffnungszeiten unbekannt',
+    'hours.unclear': 'Öffnungszeiten unklar',
+    'hours.unreadable': 'Öffnungszeiten unlesbar',
+    'hours.open': 'Geöffnet',
+    'hours.openUntil': 'Geöffnet, schließt {when}',
+    'hours.closed': 'Geschlossen',
+    'hours.closedUntil': 'Geschlossen, öffnet {when}',
+    'info.btn': 'Infos zu SunCafe',
+    'info.title': 'Über SunCafe',
+    'info.close': 'Schließen',
+    'info.lang': 'Sprache',
+    'info.intro': 'SunCafe zeigt Cafés und Bäckereien in deiner Nähe und schätzt, ob dort gerade die Sonne scheint. Mit dem Zeitschieber siehst du die Vorschau bis 48 Stunden.',
+    'info.h.colors': 'Farben',
+    'info.sun': 'Sonne',
+    'info.shade': 'Schatten durch Gebäude',
+    'info.night': 'Nacht oder noch nicht berechnet',
+    'info.partial': '„Teils Sonne“ heißt: An einer Seite des Cafés scheint Sonne, an einer anderen nicht. Blasse Einträge sind geschlossen.',
+    'info.minutes': '„☀️ 85 min“ heißt: So viele Minuten Sonne gibt es dort in den 2 Stunden ab der gewählten Zeit, solange geöffnet ist. Danach lässt sich die Liste auch sortieren.',
+    'info.h.how': 'So wird gerechnet',
+    'info.how1': 'Sonnenstand aus Datum, Uhrzeit und Ort (SunCalc).',
+    'info.how2': 'Schatten: Ein Strahl zur Sonne wird gegen die Gebäude der Karte geprüft. Fehlt die Höhe, gelten 15 m.',
+    'info.how3': 'In Wien ist der Horizont vorab berechnet: mit den gemessenen Gebäudehöhen der Stadt Wien und dem Gelände bis 20 km, etwa dem Wienerwald.',
+    'info.how4': 'Position: Gibt es in OpenStreetMap eine Terrasse, wird sie benutzt. Sonst werden etwa 4 m vor der Hausfassade Punkte gesetzt, bei Eckhäusern an mehreren Seiten.',
+    'info.how5': 'Öffnungszeiten stammen aus OpenStreetMap. Fehlen sie, steht „Öffnungszeiten unbekannt“.',
+    'info.h.limits': 'Grenzen',
+    'info.limits': 'Das Ergebnis ist eine Näherung. Bäume, Schirme, Markisen und Wolken sind nicht berücksichtigt, genaue Gebäudehöhen und Gelände nur in Wien. Bei Cafés in Innenhöfen ist die Position unsicher. Die Bewölkung wird nur angezeigt, nicht eingerechnet.',
+    'info.h.sources': 'Daten und Quellen',
+    'info.src.osm': 'Cafés, Öffnungszeiten, Gebäude: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)',
+    'info.src.wien': 'Gebäudehöhen Wien: Datenquelle: Stadt Wien – <a href="https://data.wien.gv.at" target="_blank" rel="noopener">data.wien.gv.at</a> (CC BY 4.0)',
+    'info.src.dgm': 'Gelände: © offene Daten Österreichs – Digitales Geländemodell (DGM) Österreich (CC BY 3.0 AT), über <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a>',
+    'info.src.map': 'Karte: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, dargestellt mit MapLibre',
+    'info.src.wx': 'Wetter: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>',
+    'info.src.geo': 'Adresssuche: Nominatim',
+    'info.h.code': 'Quellcode',
+    'info.code': 'SunCafe ist ein Hobbyprojekt, der Code ist öffentlich: <a href="https://github.com/NicoFuchsGIT/SunCafe" target="_blank" rel="noopener">github.com/NicoFuchsGIT/SunCafe</a>',
+},
+en: {
+    'doc.title': 'SunCafe – Find sunny spots',
+    'wx.loading': 'Loading weather …',
+    'wx.none': 'Weather unavailable',
+    'wx.line': '{t} °C · cloud cover {c} %',
+    'search.ph': 'Search address, press Enter',
+    'search.label': 'Search address',
+    'slider.label': 'Time, up to 48 hours ahead',
+    'time.now': 'Now',
+    'sun.below': 'Sun below the horizon',
+    'sun.alt': 'Sun altitude {deg}°',
+    'f.open': 'Open',
+    'f.sun': 'Sunny only',
+    'ptype.label': 'Choose category',
+    'ptype.cafe': '☕️ Cafés & bakeries only',
+    'ptype.bar': '🍻 Also bars & pubs',
+    'ptype.rest': '🍽️ Everything (incl. restaurants)',
+    'sort.label': 'Sort order',
+    'sort.dist': '📍 Distance',
+    'sort.sun': '☀️ Most sun (2 h)',
+    'status.hint': 'Tap the map or search an address to load cafés.',
+    'status.loading': 'Loading cafés …',
+    'status.loadingFrom': 'Loading data from {host} …',
+    'status.loadingPlaces': 'Loading nearby places …',
+    'status.failed': 'Could not load places (Overpass unreachable).',
+    'status.failedMore': 'Error while loading more. Showing places so far.',
+    'status.none': 'No places found so far.',
+    'status.count': '{n} of {total} cafés',
+    'status.night': ' · night, no sun',
+    'status.calc': ' · calculating shade ...',
+    'status.total': '{n} places in memory.',
+    'status.noShade': '{n} places · shade currently unavailable',
+    'status.notFound': 'Address not found.',
+    'list.toggle': 'Toggle list',
+    'list.btn': 'List',
+    'pick.title': 'Pick a place manually',
+    'pick.confirm': '✅ Search here',
+    'cafe.noName': 'Café without name',
+    'state.sun': 'Sun',
+    'state.partial': 'Partly sunny',
+    'state.shade': 'Shade',
+    'state.night': 'Night',
+    'state.pending': 'Shade not calculated',
+    'state.approx': ' (building shade, approximation)',
+    'state.courtyard': ' (courtyard possible)',
+    'out.yes': 'Outdoor seating: yes',
+    'out.no': 'Outdoor seating: no',
+    'out.unknown': 'Outdoor seating: unknown',
+    'gmaps.title': 'View in Google Maps',
+    'sunmin': '☀️ {n} min',
+    'lbl.Seite Nord': 'North side', 'lbl.Seite Nordost': 'Northeast side', 'lbl.Seite Ost': 'East side',
+    'lbl.Seite Südost': 'Southeast side', 'lbl.Seite Süd': 'South side', 'lbl.Seite Südwest': 'Southwest side',
+    'lbl.Seite West': 'West side', 'lbl.Seite Nordwest': 'Northwest side',
+    'lbl.Terrasse (OSM)': 'Terrace (OSM)', 'lbl.Position laut OSM': 'Position per OSM',
+    'hours.unknown': 'Opening hours unknown',
+    'hours.unclear': 'Opening hours unclear',
+    'hours.unreadable': 'Opening hours unreadable',
+    'hours.open': 'Open',
+    'hours.openUntil': 'Open, closes {when}',
+    'hours.closed': 'Closed',
+    'hours.closedUntil': 'Closed, opens {when}',
+    'info.btn': 'About SunCafe',
+    'info.title': 'About SunCafe',
+    'info.close': 'Close',
+    'info.lang': 'Language',
+    'info.intro': 'SunCafe shows cafés and bakeries near you and estimates whether the sun is shining there. The time slider previews up to 48 hours ahead.',
+    'info.h.colors': 'Colours',
+    'info.sun': 'Sun',
+    'info.shade': 'Shade from buildings',
+    'info.night': 'Night or not calculated yet',
+    'info.partial': '“Partly sunny” means: sun on one side of the café, none on another. Faded entries are closed.',
+    'info.minutes': '“☀️ 85 min” means: that many minutes of sun in the 2 hours from the chosen time, while open. The list can also be sorted by it.',
+    'info.h.how': 'How it is calculated',
+    'info.how1': 'Sun position from date, time and place (SunCalc).',
+    'info.how2': 'Shade: a ray towards the sun is tested against the buildings on the map. Without a height, 15 m is assumed.',
+    'info.how3': 'In Vienna the horizon is precomputed: with the surveyed building heights of the City of Vienna and terrain up to 20 km, e.g. the Vienna Woods.',
+    'info.how4': 'Position: if OpenStreetMap has a terrace, it is used. Otherwise points are placed about 4 m in front of the facade, on several sides for corner buildings.',
+    'info.how5': 'Opening hours come from OpenStreetMap. If missing, it says “Opening hours unknown”.',
+    'info.h.limits': 'Limits',
+    'info.limits': 'The result is an approximation. Trees, umbrellas, awnings and clouds are not considered, exact building heights and terrain only in Vienna. For cafés in courtyards the position is uncertain. Cloud cover is only shown, not factored in.',
+    'info.h.sources': 'Data and sources',
+    'info.src.osm': 'Cafés, opening hours, buildings: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)',
+    'info.src.wien': 'Building heights Vienna: data source: City of Vienna – <a href="https://data.wien.gv.at" target="_blank" rel="noopener">data.wien.gv.at</a> (CC BY 4.0)',
+    'info.src.dgm': 'Terrain: © open data Austria – Digital Terrain Model (DGM) Austria (CC BY 3.0 AT), via <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a>',
+    'info.src.map': 'Map: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, rendered with MapLibre',
+    'info.src.wx': 'Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>',
+    'info.src.geo': 'Address search: Nominatim',
+    'info.h.code': 'Source code',
+    'info.code': 'SunCafe is a hobby project, the code is public: <a href="https://github.com/NicoFuchsGIT/SunCafe" target="_blank" rel="noopener">github.com/NicoFuchsGIT/SunCafe</a>',
+},
+};
+export const DICT = dict;
+export const DAYS_SHORT = {de: ['So','Mo','Di','Mi','Do','Fr','Sa'], en: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']};
+
+const store = {
+    get() { try { return localStorage.getItem(KEY); } catch(e) { return null; } },
+    set(v) { try { localStorage.setItem(KEY, v); } catch(e) {} },
+};
+const detect = () => {
+    const saved = store.get();
+    if (LANGS.includes(saved)) return saved;
+    const nav = typeof navigator !== 'undefined' ? (navigator.languages?.[0] || navigator.language || '') : '';
+    return nav.toLowerCase().startsWith('de') ? 'de' : 'en';
+};
+let lang = detect();
+
+export const getLang = () => lang;
+export function setLang(l) {
+    if (!LANGS.includes(l)) return;
+    lang = l; store.set(l);
+    if (typeof document !== 'undefined') { document.documentElement.lang = l; applyStatic(); }
+}
+export function t(key, params) {
+    const s = dict[lang][key] ?? dict.de[key] ?? key;
+    return params ? s.replace(/\{(\w+)\}/g, (m, k) => params[k] ?? m) : s;
+}
+
+// ---------- Formate ----------
+export const locale = () => LOCALE[lang];
+export const dayShort = i => DAYS_SHORT[lang][i];
+export const fmtTime = d => d.toLocaleTimeString(locale(), {hour: '2-digit', minute: '2-digit'});
+export const fmtDist = m => m < 1000 ? Math.round(m) + ' m' : new Intl.NumberFormat(locale(), {maximumFractionDigits: 1, minimumFractionDigits: 1}).format(m / 1000) + ' km';
+
+// ---------- Statische Texte im DOM: data-i18n, data-i18n-html, data-i18n-attr="attr:key;attr:key" ----------
+export function applyStatic(root = document) {
+    document.title = t('doc.title');
+    for (const el of root.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
+    for (const el of root.querySelectorAll('[data-i18n-html]')) el.innerHTML = t(el.dataset.i18nHtml);
+    for (const el of root.querySelectorAll('[data-i18n-attr]'))
+        for (const pair of el.dataset.i18nAttr.split(';')) { const [a, k] = pair.split(':'); el.setAttribute(a, t(k)); }
+}

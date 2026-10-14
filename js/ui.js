@@ -5,12 +5,13 @@ import {attachBuildings} from './shade.js';
 import {attachMasks, maskShade} from './horizon.js';
 import {sunTrack, sunMinutes} from './sunminutes.js';
 import {wall, fmtD, openInfo} from './hours.js';
+import {t, getLang, setLang, applyStatic, fmtDist} from './i18n.js';
 import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes} from './data.js';
 
 // ---------- Zustand ----------
 let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, tz = null;
 const $ = id => document.getElementById(id);
-const setStatus = t => { $('status').textContent = t; };
+const setStatus = msg => { $('status').textContent = msg; };
 // Schieber auf 0 ist „Jetzt“: echte Uhrzeit statt t0, das auf STEP_MIN abgerundet ist und beim Offenlassen veraltet
 const curTime = () => +$('slider').value ? new Date(t0.getTime() + $('slider').value * STEP_MIN * 60000) : new Date();
 
@@ -29,7 +30,7 @@ class SearchCenterControl {
         this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.title = 'Ort manuell wählen';
+        btn.title = t('pick.title'); this._btn = btn;
         btn.innerHTML = '📍';
         btn.style.fontSize = '16px';
         btn.onclick = () => setPicking($('confirm-place-btn').classList.contains('hidden-ui')); // zweiter Klick bricht ab
@@ -38,7 +39,8 @@ class SearchCenterControl {
     }
     onRemove() { this._container.remove(); }
 }
-map.addControl(new SearchCenterControl(), 'top-right');
+const searchCtl = new SearchCenterControl(), searchBtn = searchCtl._btn;
+map.addControl(searchCtl, 'top-right');
 
 map.on('load', () => {
     map.addSource('cafes', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
@@ -72,11 +74,11 @@ function showTerr(c) {
 function update() {
     if (!mapReady || !t0) return;
     const d = curTime(), s = !+$('slider').value, w = wall(d, tz);
-    $('tlabel').textContent = s ? 'Jetzt' : fmtD(w);
+    $('tlabel').textContent = s ? t('time.now') : fmtD(w);
     const sp = SunCalc.getPosition(d, place.lat, place.lng), alt = sp.altitude, az = sp.azimuth + Math.PI;
     const night = alt < MIN_ALT;
     document.documentElement.classList.toggle('dark', night);
-    $('sunstate').textContent = night ? 'Sonne unter dem Horizont' : 'Sonnenhöhe ' + Math.round(alt * 180 / Math.PI) + '°';
+    $('sunstate').textContent = night ? t('sun.below') : t('sun.alt', {deg: Math.round(alt * 180 / Math.PI)});
     showWx(d);
     const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
     const rows = [];
@@ -110,15 +112,15 @@ function update() {
     for (const c of shown.slice(0, 80)) {
         const li = document.createElement('li'); li.tabIndex = 0;
         li.className = c.info.o === 0 ? 'closed' : ''; li.dataset.id = c.id;
-        li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="meta"><span class="sm"></span><span class="dist">${c.dist < 1000 ? Math.round(c.dist) + ' m' : (c.dist/1000).toFixed(1) + ' km'}</span></span>`;
-        if (c.sunMin != null) li.querySelector('.sm').textContent = '☀️ ' + c.sunMin + ' min';
-        li.querySelector('.nm').textContent = c.name;
-        li.querySelector('.sub').textContent = stateText(c) + (c.hof && c.state !== 'night' ? ' (Innenhof möglich)' : '') + ' · ' + c.info.text;
+        li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="meta"><span class="sm"></span><span class="dist">${fmtDist(c.dist)}</span></span>`;
+        if (c.sunMin != null) li.querySelector('.sm').textContent = t('sunmin', {n: c.sunMin});
+        li.querySelector('.nm').textContent = c.name || t('cafe.noName');
+        li.querySelector('.sub').textContent = stateText(c) + (c.hof && c.state !== 'night' ? t('state.courtyard') : '') + ' · ' + c.info.text;
         const go = () => { map.flyTo({center:[c.lng, c.lat], zoom:Math.max(map.getZoom(), 16.5)}); select(c.id); };
         li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
         L.appendChild(li);
     }
-    $('status').textContent = `${rows.length} von ${cafes.length} Cafés` + (night ? ' · Nacht, keine Sonne' : '') + (cafes.some(c => !c.calc) ? ' · Schatten wird berechnet ...' : '');
+    $('status').textContent = t('status.count', {n: rows.length, total: cafes.length}) + (night ? t('status.night') : '') + (cafes.some(c => !c.calc) ? t('status.calc') : '');
     if (popup && popup._cid) openPopup(popup._cid);
 }
 // Café in der Liste markieren, bei Klick auf der Karte auch hinscrollen; id null hebt die Markierung auf
@@ -131,13 +133,13 @@ function markList(id, scroll = false) {
 }
 // Café auswählen: Popup öffnen, Liste neu aufbauen (gewähltes Café oben) und hinscrollen
 function select(id) { openPopup(id); update(); markList(id, true); }
-const stateText = c => c.state === 'sun' && c.partial ? 'Teils Sonne' : ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
+const stateText = c => c.state === 'sun' && c.partial ? t('state.partial') : t('state.' + c.state);
 function openPopup(id) {
     const c = cafes.find(x => x.id === id); if (!c) return;
-    const out = c.outdoor === 'yes' ? 'Außenplätze: ja' : c.outdoor === 'no' ? 'Außenplätze: nein' : 'Außenplätze: unbekannt';
-    const sides = c.res && c.state !== 'night' ? c.pts.map((p, i) => `${p.label}: ${c.res[i] ? 'Schatten' : 'Sonne'}${p.enclosed ? ' (Innenhof möglich)' : ''}`) : [];
+    const out = t(c.outdoor === 'yes' ? 'out.yes' : c.outdoor === 'no' ? 'out.no' : 'out.unknown');
+    const sides = c.res && c.state !== 'night' ? c.pts.map((p, i) => `${t('lbl.' + p.label)}: ${t(c.res[i] ? 'state.shade' : 'state.sun')}${p.enclosed ? t('state.courtyard') : ''}`) : [];
     const dest = c.lat + ',' + c.lng;
-    const view = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.addr ? `${c.name}, ${c.addr}` : `${c.name} ${dest}`);
+    const view = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.addr ? `${c.name || t('cafe.noName')}, ${c.addr}` : `${c.name || t('cafe.noName')} ${dest}`);
 
     const el = document.createElement('div');
 
@@ -147,14 +149,14 @@ function openPopup(id) {
     gmapsLink.target = '_blank';
     gmapsLink.rel = 'noopener';
     gmapsLink.className = 'gmaps-icon';
-    gmapsLink.title = 'In Google Maps ansehen';
+    gmapsLink.title = t('gmaps.title');
     gmapsLink.innerHTML = '🗺️'; // Du kannst auch '🗺️' oder ein SVG einfügen
     el.appendChild(gmapsLink);
 
     const b = document.createElement('b');
-    b.textContent = c.name; el.appendChild(b);
+    b.textContent = c.name || t('cafe.noName'); el.appendChild(b);
 
-    [stateText(c) + (c.calc ? ' (Gebäudeschatten, Näherung)' : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
+    [stateText(c) + (c.calc ? t('state.approx') : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
         const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
 
     // gleiches Café: nur Inhalt tauschen; neues Popup oder setDOMContent holt den Fokus, z. B. vom Schieber
@@ -180,9 +182,9 @@ async function loadWx(lat, lng) {
     if (place === mine) update();
 }
 function showWx(d) {
-    if (!wx) { $('wx').textContent = 'Wetter nicht verfügbar'; return; }
+    if (!wx) { $('wx').textContent = t('wx.none'); return; }
     const i = Math.round((d - wx.t0) / 3600000);
-    $('wx').textContent = wx.T[i] == null ? '' : `${Math.round(wx.T[i])} °C · Bewölkung ${wx.C[i]} %`;
+    $('wx').textContent = wx.T[i] == null ? '' : t('wx.line', {t: Math.round(wx.T[i]), c: wx.C[i]});
 }
 
 // ---------- Ort setzen ----------
@@ -199,7 +201,7 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
         c.dist = Math.hypot((c.lng - lng) * kx, (c.lat - lat) * ky);
     }
 
-    $('status').textContent = 'Lade neue Orte im Umkreis …';
+    $('status').textContent = t('status.loadingPlaces');
     loadWx(lat, lng);
     // Gewählte Uhrzeit beim Ortswechsel behalten; „Jetzt“ (Schieber auf 0) bleibt „Jetzt“
     const sl = $('slider'), keep = t0 && +sl.value ? curTime() : null;
@@ -230,21 +232,21 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
     } catch(e) {
         if (place !== mine) return;
         if (cafes.length === 0) {
-            $('status').textContent = 'Orte konnten nicht geladen werden (Overpass nicht erreichbar).';
+            $('status').textContent = t('status.failed');
         } else {
-            $('status').textContent = 'Fehler beim Nachladen. Zeige bisherige Orte.';
+            $('status').textContent = t('status.failedMore');
         }
         return;
     }
 
     // Zweites Update: Jetzt werden die alten + die neu geladenen Orte zusammen angezeigt
     update();
-    if (!cafes.length) { $('status').textContent = 'Bisher keine Orte gefunden.'; return; }
+    if (!cafes.length) { $('status').textContent = t('status.none'); return; }
 
     await loadHorizon(cafes); // Wien: vorberechnete Masken mit echten Höhen und Gelände
     if (place !== mine) return;
     update();
-    if (!cafes.some(c => !c.calc && c.dist <= RINGS[RINGS.length - 1])) { $('status').textContent = `${cafes.length} Orte insgesamt im Speicher.`; return; }
+    if (!cafes.some(c => !c.calc && c.dist <= RINGS[RINGS.length - 1])) { $('status').textContent = t('status.total', {n: cafes.length}); return; }
 
     try {
         // Gebäude für die Schattenberechnung nachladen (außerhalb Wiens oder ohne Kachel)
@@ -260,9 +262,9 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
             await sleep(30);
             if (place !== mine) return;
         }
-        $('status').textContent = `${cafes.length} Orte insgesamt im Speicher.`;
+        $('status').textContent = t('status.total', {n: cafes.length});
     } catch(e) {
-        if (place === mine) $('status').textContent = `${cafes.length} Orte · Schatten derzeit nicht verfügbar`;
+        if (place === mine) $('status').textContent = t('status.noShade', {n: cafes.length});
     }
 }
 
@@ -281,8 +283,13 @@ $('q').addEventListener('keydown', async e => {
     const q = e.target.value.trim(); if (!q) return;
     const hit = await geocode(q);
     if (hit === undefined) return; // letzte Anfrage weniger als 1,1 s her
-    if (hit) setPlace(hit.lat, hit.lng, true, hit.rg); else $('status').textContent = 'Adresse nicht gefunden.';
+    if (hit) setPlace(hit.lat, hit.lng, true, hit.rg); else $('status').textContent = t('status.notFound');
 });
+
+// ---------- Sprache ----------
+applyStatic();
+const langSel = $('lang'); langSel.value = getLang();
+langSel.onchange = () => { setLang(langSel.value); searchBtn.title = t('pick.title'); if (t0) update(); };
 
 // ---------- Info-Dialog ----------
 const info = $('info');

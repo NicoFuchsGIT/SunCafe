@@ -3,6 +3,7 @@
 import {STYLE_URL, WIEN, WIEN_RANGE, OVERPASS, CAFE_RADIUS, TERRACE_MATCH_RADIUS, DEFAULT_HEIGHT, BAD_CHAIN_RE} from './config.js';
 import {M_PER_DEG, kxAt, distM} from './geo.js';
 import {parseHours} from './hours.js';
+import {t} from './i18n.js';
 import {tileKey, decodePoints} from './horizon.js';
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -22,13 +23,13 @@ async function overpass(q, proxy, key, ms, onStatus) { // proxy: Pfad der Vercel
     };
     let j, err;
     try {
-        onStatus('Lade Cafés …');
+        onStatus(t('status.loading'));
         j = await ask(proxy);
     } catch(e) {
         err = e;
         for (let i = 0; i < OVERPASS.length && !j; i++) {
             const url = OVERPASS[(osrv + i) % OVERPASS.length];
-            onStatus('Lade Daten von ' + new URL(url).host + ' …');
+            onStatus(t('status.loadingFrom', {host: new URL(url).host}));
             try {
                 j = await ask(url, {method:'POST', body:'data=' + encodeURIComponent(q), headers:{'Content-Type':'application/x-www-form-urlencoded'}});
                 osrv = (osrv + i) % OVERPASS.length;
@@ -188,7 +189,7 @@ export function parseCafes(data, lat0, lng0, rg, ptype = 'cafe') {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
         const raw = e.tags.opening_hours;
-        return {id:String(e.id), name:e.tags.name || 'Café ohne Namen', lat, lng, loc:[], calc:false, terr:[], oh:parseHours(raw, lat, lng, rg), raw,
+        return {id:String(e.id), name:e.tags.name || '', lat, lng, loc:[], calc:false, terr:[], oh:parseHours(raw, lat, lng, rg), raw,
             dist:Math.hypot((lng - lng0) * kx, (lat - lat0) * ky), outdoor:e.tags.outdoor_seating,
             addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
     }).filter(Boolean);
