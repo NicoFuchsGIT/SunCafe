@@ -10,7 +10,7 @@ export const inWien = (lat, lng) => distM(lat, lng, WIEN.lat, WIEN.lng) < WIEN_R
 
 // ---------- Overpass (Cache, Rotation) ----------
 let osrv = 0;
-async function overpass(q, key, ms, onStatus) {
+async function overpass(q, proxy, key, ms, onStatus) { // proxy: Pfad der Vercel-Funktion, die q selbst baut
     try { const c = sessionStorage.getItem(key); if (c) return JSON.parse(c); } catch(e) {}
     const ask = async (url, init) => {
         const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
@@ -23,7 +23,7 @@ async function overpass(q, key, ms, onStatus) {
     let j, err;
     try {
         onStatus('Lade Cafés …');
-        j = await ask('/api/overpass?data=' + encodeURIComponent(q));
+        j = await ask(proxy);
     } catch(e) {
         err = e;
         for (let i = 0; i < OVERPASS.length && !j; i++) {
@@ -43,7 +43,6 @@ async function overpass(q, key, ms, onStatus) {
 let wienCache = null;
 // ptype: 'cafe' | 'bar' | 'rest'
 export async function fetchCafes(lat, lng, ptype = 'cafe', onStatus = () => {}) {
-    const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
 
     // 1. Versuch: Der Wien-Turbo
     if (inWien(lat, lng)) {
@@ -72,12 +71,17 @@ export async function fetchCafes(lat, lng, ptype = 'cafe', onStatus = () => {}) 
     }
 
     // 2. Live-Fallback: Greift außerhalb von Wien ODER wenn wien.json einen Fehler wirft
+    return overpass(cafeQuery(lat, lng, ptype), `/api/overpass?lat=${lat}&lng=${lng}&ptype=${ptype}`, `sc:c2:${ptype}:${lat},${lng}`, 25000, onStatus);
+}
+
+// Overpass-Abfrage für Orte um (lat, lng); auch api/overpass.js baut sie hiermit, damit der Proxy keine fremden Abfragen annimmt
+export function cafeQuery(lat, lng, ptype = 'cafe') {
+    const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
     let q = `nwr["amenity"="cafe"]${a}nwr["shop"="bakery"]${a}`;
     if (ptype === 'bar' || ptype === 'rest') q += `nwr["amenity"="bar"]${a}nwr["amenity"="pub"]${a}`;
     if (ptype === 'rest') q += `nwr["amenity"="restaurant"]${a}`;
     q += `nwr["leisure"="outdoor_seating"]${a}`;
-
-    return overpass(`[out:json][timeout:25];(${q});out body center;`, `sc:c2:${ptype}:${lat},${lng}`, 25000, onStatus);
+    return `[out:json][timeout:25];(${q});out body center;`;
 }
 
 // ---------- Vorberechnete Horizontmasken für Wien (data/horizon/<Kachel>.json) ----------

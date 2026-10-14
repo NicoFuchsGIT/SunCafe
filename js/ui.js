@@ -11,7 +11,8 @@ import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHor
 let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, tz = null;
 const $ = id => document.getElementById(id);
 const setStatus = t => { $('status').textContent = t; };
-const curTime = () => new Date(t0.getTime() + $('slider').value * STEP_MIN * 60000);
+// Schieber auf 0 ist „Jetzt“: echte Uhrzeit statt t0, das auf STEP_MIN abgerundet ist und beim Offenlassen veraltet
+const curTime = () => +$('slider').value ? new Date(t0.getTime() + $('slider').value * STEP_MIN * 60000) : new Date();
 
 // ---------- Karte ----------
 const map = new maplibregl.Map({container:'map', style:STYLE_URL, center:[place.lng, place.lat], zoom:15.5, attributionControl:false});
@@ -23,7 +24,7 @@ geo.on('geolocate', p => setPlace(p.coords.latitude, p.coords.longitude, false))
 
 // Neuer Knopf: Suchen an der aktuellen Kartenmitte
 class SearchCenterControl {
-    onAdd(map) {
+    onAdd() {
         this._container = document.createElement('div');
         this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         const btn = document.createElement('button');
@@ -31,19 +32,7 @@ class SearchCenterControl {
         btn.title = 'Ort manuell wählen';
         btn.innerHTML = '📍';
         btn.style.fontSize = '16px';
-        btn.onclick = () => {
-            // 1. Fadenkreuz & Bestätigen-Button einblenden
-            $('center-marker').classList.remove('hidden-ui');
-            $('confirm-place-btn').classList.remove('hidden-ui');
-
-            // 2. Liste einklappen, falls sie offen ist
-            const appDiv = $('app');
-            if (!appDiv.classList.contains('collapsed')) {
-                appDiv.classList.add('collapsed');
-                updateSidebarIcon(true);
-                setTimeout(() => map.resize(), 50);
-            }
-        };
+        btn.onclick = () => setPicking($('confirm-place-btn').classList.contains('hidden-ui')); // zweiter Klick bricht ab
         this._container.appendChild(btn);
         return this._container;
     }
@@ -82,7 +71,7 @@ function showTerr(c) {
 // ---------- Anzeige ----------
 function update() {
     if (!mapReady || !t0) return;
-    const d = curTime(), s = d.getTime() === t0.getTime(), w = wall(d, tz);
+    const d = curTime(), s = !+$('slider').value, w = wall(d, tz);
     $('tlabel').textContent = s ? 'Jetzt' : fmtD(w);
     const sp = SunCalc.getPosition(d, place.lat, place.lng), alt = sp.altitude, az = sp.azimuth + Math.PI;
     const night = alt < MIN_ALT;
@@ -145,7 +134,6 @@ function select(id) { openPopup(id); update(); markList(id, true); }
 const stateText = c => c.state === 'sun' && c.partial ? 'Teils Sonne' : ({sun:'Sonne', shade:'Schatten', night:'Nacht', pending:'Schatten nicht berechnet'})[c.state];
 function openPopup(id) {
     const c = cafes.find(x => x.id === id); if (!c) return;
-    if (popup) popup.remove();
     const out = c.outdoor === 'yes' ? 'Außenplätze: ja' : c.outdoor === 'no' ? 'Außenplätze: nein' : 'Außenplätze: unbekannt';
     const sides = c.res && c.state !== 'night' ? c.pts.map((p, i) => `${p.label}: ${c.res[i] ? 'Schatten' : 'Sonne'}${p.enclosed ? ' (Innenhof möglich)' : ''}`) : [];
     const dest = c.lat + ',' + c.lng;
@@ -169,8 +157,11 @@ function openPopup(id) {
     [stateText(c) + (c.calc ? ' (Gebäudeschatten, Näherung)' : ''), ...sides, c.info.text, out, c.addr].filter(Boolean).forEach(t => {
         const p = document.createElement('p'); p.textContent = t; el.appendChild(p); });
 
+    // gleiches Café: nur Inhalt tauschen; neues Popup oder setDOMContent holt den Fokus, z. B. vom Schieber
+    if (popup && popup._cid === id) { popup._el.replaceChildren(...el.childNodes); showTerr(c); return; }
+    if (popup) popup.remove();
     popup = new maplibregl.Popup({closeButton:true, closeOnClick:false, offset:12}).setLngLat([c.lng, c.lat]).setDOMContent(el).addTo(map);
-    popup._cid = id;
+    popup._cid = id; popup._el = el;
     showTerr(c);
     markList(id);
     popup.on('close', () => { if (popup && popup._cid === id) { popup._cid = null; markList(null); map.getSource('terr').setData({type:'FeatureCollection', features:[]}); } });
@@ -301,40 +292,35 @@ info.addEventListener('click', e => { if (e.target === info) info.close(); }); /
 
 // ---------- Sidebar & Auswahl-Logik ----------
 
-// Hilfsfunktion, um die Pfeile richtig zu setzen
-function updateSidebarIcon(isCollapsed) {
-    if (window.innerWidth <= 760) {
-        $('ts-icon').textContent = isCollapsed ? '▲' : '▼';
-    } else {
-        $('ts-icon').textContent = isCollapsed ? '▶' : '◀';
-    }
+// Pfeil passend zu Layout (mobil: Liste unten) und Zustand
+const mobile = matchMedia('(max-width:760px)');
+function updateSidebarIcon() {
+    const c = $('app').classList.contains('collapsed');
+    $('ts-icon').textContent = mobile.matches ? (c ? '▲' : '▼') : (c ? '▶' : '◀');
+    $('toggle-sidebar').setAttribute('aria-expanded', String(!c));
+}
+updateSidebarIcon();
+mobile.addEventListener('change', updateSidebarIcon);
+
+// Ort wählen: Pin in der Kartenmitte und „Hier suchen“ einblenden, Liste dafür einklappen
+function setPicking(on) {
+    $('center-marker').classList.toggle('hidden-ui', !on);
+    $('confirm-place-btn').classList.toggle('hidden-ui', !on);
+    $('app').classList.toggle('collapsed', on);
+    updateSidebarIcon();
+    setTimeout(() => map.resize(), 50);
 }
 
 // Manueller Klick auf den "Liste"-Button
 $('toggle-sidebar').onclick = () => {
-    const appDiv = $('app');
-    appDiv.classList.toggle('collapsed');
-    updateSidebarIcon(appDiv.classList.contains('collapsed'));
+    $('app').classList.toggle('collapsed');
+    updateSidebarIcon();
     setTimeout(() => map.resize(), 50);
 };
 
 // Klick auf "✅ Hier suchen"
 $('confirm-place-btn').onclick = () => {
-    // 1. Die exakte Mitte der Karte auslesen
     const c = map.getCenter();
-
-    // 2. UI wieder verstecken
-    $('center-marker').classList.add('hidden-ui');
-    $('confirm-place-btn').classList.add('hidden-ui');
-
-    // 3. Liste wieder ausklappen
-    const appDiv = $('app');
-    appDiv.classList.remove('collapsed');
-    updateSidebarIcon(false);
-
-    // 4. Karte anpassen und suchen!
-    setTimeout(() => {
-        map.resize();
-        setPlace(c.lat, c.lng); // Löst die Suche am neuen Ort aus
-    }, 50);
+    setPicking(false);
+    setTimeout(() => setPlace(c.lat, c.lng), 60); // nach dem resize, sonst fliegt die Karte zur alten Mitte
 };

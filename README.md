@@ -21,7 +21,7 @@ js/hours.js       Ortszeit und Öffnungszeiten, ohne DOM
 js/data.js        Datenquellen: Overpass, wien.json, Nominatim, Open-Meteo, Gebäude aus Kartenkacheln
 test/             Tests mit node:test, Start mit `npm ci && npm test` (Node ≥ 18); SunCalc und opening_hours als devDependencies in denselben Versionen wie in index.html
 eslint.config.mjs ESLint-Regeln, Prüfung mit `npm run lint` (vorher einmal `npm install`)
-api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache)
+api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache), nimmt nur lat/lng/ptype an und baut die Abfrage selbst
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
 data/horizon/     vorberechnete Horizontmasken für Wien, eine Datei pro Kachel
 pipeline/         Python-Pipeline für data/horizon (nur Standardbibliothek), Tests mit `pytest pipeline`
