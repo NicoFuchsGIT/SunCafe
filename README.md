@@ -23,6 +23,8 @@ vendor/           selbst gehostete Bibliotheken: MapLibre GL 4.7.1, SunCalc 1.9.
 test/             Tests mit node:test, Start mit `npm ci && npm test` (Node ≥ 18); SunCalc und opening_hours als devDependencies in denselben Versionen wie in index.html
 eslint.config.mjs ESLint-Regeln, Prüfung mit `npm run lint` (vorher einmal `npm install`)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache), nimmt nur lat/lng/ptype an und baut die Abfrage selbst
+api/vote.js       Vercel-Funktion: nimmt anonyme Votes an (POST), validiert, Rate-Limit pro Ort+Gerät (30 min), Gerät (20/h) und IP-Hash (60/h), speichert in Upstash
+api/_lib/storage.js  Adapter für Upstash Redis (REST); Variablen UPSTASH_REDIS_REST_URL/_TOKEN (oder KV_REST_API_*) und VOTE_SALT (zufälliger String, für die Hashes) in Vercel setzen
 data/wien.json    vorab geladene Cafés/Terrassen im Umkreis von 5 km um den Stephansplatz
 data/horizon/     vorberechnete Horizontmasken für Wien, eine Datei pro Kachel
 pipeline/         Python-Pipeline für data/horizon (nur Standardbibliothek), Tests mit `pytest pipeline`
