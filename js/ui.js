@@ -11,6 +11,7 @@ import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHor
 
 // ---------- Zustand ----------
 let voteOnSite = false, voteMsg = {};
+const voteBusy = new Set(), voteErr = new Set(); // pro Café: Senden läuft / letzter Versuch fehlgeschlagen (überlebt das Neuaufbauen des Popups)
 let place = {...WIEN}, cafes = [], wx = null, t0 = null, popup = null, mapReady = false, tz = null;
 const $ = id => document.getElementById(id);
 const setStatus = msg => { $('status').textContent = msg; };
@@ -145,23 +146,31 @@ function voteBox(c) {
     const sp = SunCalc.getPosition(new Date(), c.lat, c.lng);
     const payload = +$('slider').value ? null : buildVote(c, {alt: sp.altitude, az: sp.azimuth + Math.PI, device: deviceId()});
     if (!payload) { if (+$('slider').value) note(t('vote.nowonly')); else box.hidden = true; return box; }
+    if (voteBusy.has(c.id)) { note(t('vote.busy')); return box; } // kein Doppelversand beim Neuaufbau
     if (voteMsg[c.id] || votedRecently(c.id)) { note(t(voteMsg[c.id] || 'vote.thanks')); return box; }
     const row = document.createElement('div'); row.className = 'vote-row';
     const btns = ['sun', 'part', 'shade'].map(v => {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'vote-btn';
-        b.textContent = {sun: '☀️', part: '⛅', shade: '☁️'}[v] + ' ' + t('vote.' + v); row.appendChild(b);
+        b.classList.add('v-' + v); b.innerHTML = icon({sun: 'sun', part: 'partial', shade: 'shade'}[v]) + ' <span></span>';
+        b.lastChild.textContent = t('vote.' + v); row.appendChild(b);
         b.onclick = async () => {
-            btns.forEach(x => { x.disabled = true; }); note(t('vote.busy'));
-            payload.onSite = voteOnSite && await checkOnSite(c);
-            const r = await sendVote(payload, v);
-            if (r === 'ok') { markVoted(c.id); voteMsg[c.id] = payload.onSite || !voteOnSite ? 'vote.thanks' : 'vote.thanks.off'; }
+            if (voteBusy.has(c.id)) return;
+            voteBusy.add(c.id); voteErr.delete(c.id); btns.forEach(x => { x.disabled = true; }); note(t('vote.busy'));
+            const onSite = voteOnSite && await checkOnSite(c);
+            // Zeitstempel und Sonnenstand erst jetzt, die Standortabfrage kann dauern (API erlaubt ±10 min)
+            const sp2 = SunCalc.getPosition(new Date(), c.lat, c.lng);
+            const fresh = buildVote(c, {alt: sp2.altitude, az: sp2.azimuth + Math.PI, onSite, device: deviceId()});
+            const r = fresh ? await sendVote(fresh, v) : 'error';
+            voteBusy.delete(c.id);
+            if (r === 'ok') { markVoted(c.id); voteMsg[c.id] = onSite || !voteOnSite ? 'vote.thanks' : 'vote.thanks.off'; }
             else if (r === 'limit') voteMsg[c.id] = 'vote.limit';
+            else voteErr.add(c.id);
             if (popup && popup._cid === c.id) openPopup(c.id); // Inhalt neu aufbauen
-            if (r === 'error') { btns.forEach(x => { x.disabled = false; }); box.lastChild.textContent = t('vote.error'); }
         };
         return b;
     });
     box.appendChild(row);
+    if (voteErr.has(c.id)) note(t('vote.error'));
     const lab = document.createElement('label'); lab.className = 'vote-site';
     const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = voteOnSite; cb.onchange = () => { voteOnSite = cb.checked; };
     lab.append(cb, ' ' + t('vote.onsite')); box.appendChild(lab);

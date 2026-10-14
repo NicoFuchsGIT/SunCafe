@@ -81,11 +81,20 @@ Ziel: 1-Tap-Votes zur Kalibrierung, rechtzeitig zur Terrassensaison.
 |---|---------|---------|-----|
 | 3.1 | Free-KV auswählen (Upstash, D1 oder Turso; aktuelle Limits prüfen), kleiner Storage-Adapter | 2 h | §9 |
 | 3.2 | `api/vote.js`: Validierung, Rate-Limit (Geräte-ID plus gesalzener IP-Hash), Speicherung inklusive Modellvorhersage und Modellversion | 4 h | F4.2–F4.3 |
-| 3.3 | UI im Popup: ☀️ / ⛅ / ☁️, optional Standortprüfung (≤ 150 m) oder Flag „nicht vor Ort“ | 4 h | F4.1, F4.4 |
+| 3.3 | UI im Popup: drei Knöpfe Sonne / Teils / Schatten mit SVG-Icons (keine Emojis, siehe E9 und D1.5 in [ROADMAP-DESIGN.md](ROADMAP-DESIGN.md)), optional Standortprüfung (≤ 150 m) oder Flag „nicht vor Ort“ | 4 h | F4.1, F4.4 |
 | 3.4 | `api/votes-export` (geschützt per Token) bzw. Skript für den CSV-Export | 2 h | F4.5 |
 | 3.5 | Datenschutzhinweis im Info-Dialog, Tests für die API | 3 h | NFR Datenschutz |
+| 3.6 ✅ | Nacharbeit aus dem [Code-Review](CODE-REVIEW.md): Vote-Fehlermeldung, frischer Zeitstempel beim Klick, Overpass-Proxy cached keine Fehlerantworten, Rate-Limit atomar | 3 h | §9 |
 
 **Fertig, wenn:** Votes landen kostenlos und anonym in der DB und lassen sich als CSV exportieren.
+
+**Abgrenzung zur Design-Roadmap:** Die Vote-UI sitzt zunächst im Popup. Mit D2.2 (Café-Sheet statt Popup) zieht sie ins Sheet um; die Icons stammen aus dem Sprite von D1.5.
+
+**Bekannte Testlücken (aus dem [Code-Review](CODE-REVIEW.md)), vor Phase 4 schließen:**
+- `js/ui.js` hat keine Tests (Playwright-Smoke-Test für Popup und Vote inklusive Fehlerpfad).
+- `js/data.js`: `parseCafes` (Kettenfilter, Terrassenzuordnung, `ptype`), `fetchCafes` (Wien-Turbo und Fallback bei kaputter Datei), `geocode`.
+- `js/hours.js`: `openInfo` (offen, geschlossen, unklar, Zeitzone) und `wall`.
+- (`api/overpass.js` und `storage.incrWithTtl` sind mit 3.6 getestet; die UI-Teile von 3.6 – Fehlermeldung, Doppelversand, frischer Zeitstempel – bleiben ohne Test, bis `ui.js` einen Smoke-Test hat.)
 
 ---
 

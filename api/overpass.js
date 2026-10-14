@@ -18,6 +18,7 @@ module.exports = async (req, res) => {
   }
   const {cafeQuery} = await import('../js/data.js');
   const q = cafeQuery(la, ln, ptype);
+  let empty = null;
   for (const url of SERVERS) {
     try {
       const r = await fetch(url, {
@@ -31,10 +32,19 @@ module.exports = async (req, res) => {
       });
       if (!r.ok) continue;
       const text = await r.text();
+      // Überlastete Server liefern oft 200 mit „remark“ oder ohne Elemente: nächsten Server fragen
+      let data; try { data = JSON.parse(text); } catch (e) { continue; }
+      if (!Array.isArray(data.elements) || data.remark) continue;
+      if (!data.elements.length) { empty = empty || text; continue; } // leer kann stimmen oder Überlast sein: erst die anderen fragen
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
       return res.status(200).send(text);
     } catch (e) { /* nächster Server */ }
+  }
+  if (empty) { // alle Server meldeten nichts: ausliefern, aber nicht cachen
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).send(empty);
   }
   res.status(502).json({error: 'overpass unavailable'});
 };

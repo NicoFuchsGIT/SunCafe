@@ -23,8 +23,25 @@ test('Proxy baut die Café-Abfrage selbst, gerundet auf 3 Stellen', async t => {
     const res = await call({lat: '48.20821', lng: '16.37384', ptype: 'bar'});
     assert.equal(res.code, 200);
     assert.equal(res.body, '{"elements":[]}');
+    assert.equal(res.headers['Cache-Control'], 'no-store');
     assert.match(body, /^\[out:json\]/);
     assert.match(body, /around:1000,48\.208,16\.374\)/);
     assert.match(body, /"amenity"="pub"/);
     assert.doesNotMatch(body, /"amenity"="restaurant"/);
+});
+
+test('Proxy cached keine Überlast-Antworten (remark, kaputtes JSON) und fragt den nächsten Server', async t => {
+    const answers = ['{"elements":[],"remark":"runtime error: Query timed out"}', '<html>busy</html>', '{"elements":[{"type":"node","id":1}]}'];
+    let n = 0;
+    t.mock.method(globalThis, 'fetch', async () => ({ok: true, text: async () => answers[n++]}));
+    const res = await call({lat: '48.2', lng: '16.37', ptype: 'cafe'});
+    assert.equal(res.code, 200);
+    assert.equal(n, 3);
+    assert.match(res.body, /"id":1/);
+    assert.match(res.headers['Cache-Control'], /s-maxage/);
+});
+
+test('Proxy liefert 502, wenn nur Überlast-Antworten kommen', async t => {
+    t.mock.method(globalThis, 'fetch', async () => ({ok: true, text: async () => '{"elements":[],"remark":"timeout"}'}));
+    assert.equal((await call({lat: '48.2', lng: '16.37', ptype: 'cafe'})).code, 502);
 });

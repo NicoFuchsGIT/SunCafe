@@ -53,7 +53,7 @@ Ziel: Das Layout ist noch unverändert, aber alles, worauf der Umbau aufbaut, st
 | D1.2 | Test: Beide Sprachen haben dieselben Schlüssel | 1 h |
 | D1.3 | Font als WOFF2 (lateinisches Subset, variabel) nach `fonts/`, `@font-face` mit `font-display: swap`, OFL-Lizenz ins Repo | 1 h |
 | D1.4 | MapLibre, SunCalc, opening_hours selbst hosten (feste Versionen, wie in `package.json`) | 2 h |
-| D1.5 | SVG-Icon-Satz (Sonne, Teils-Sonne, Schatten, Nacht, Café, Bar, Restaurant, Pin, Route, Filter, Liste, Standort) als Sprite, Emojis in UI und Dropdowns ersetzen | 3 h |
+| D1.5 | SVG-Icon-Satz (Sonne, Teils-Sonne, Schatten, Nacht, Café, Bar, Restaurant, Pin, Route, Filter, Liste, Standort) als Sprite, Emojis in UI und Dropdowns ersetzen (Stand: Vote-Knöpfe aus Phase 3.3 nutzen bereits `i-sun`, `i-partial`, `i-shade`; Rest offen) | 3 h |
 | D1.6 | Attribution kurz am Kartenrand, Info-Dialog zweisprachig und gekürzt, Link „Ergebnis falsch?“ zum GitHub-Issue | 1,5 h |
 | D1.7 | Favicon, 404 und Open-Meteo-Anfrage prüfen | 0,5 h |
 

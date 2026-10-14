@@ -15,12 +15,15 @@ const call = async (body, {method = 'POST', headers = {'x-real-ip': '1.2.3.4'}} 
 const fakeKv = t => {
     const kv = new Map(), lists = [];
     t.mock.method(globalThis, 'fetch', async (url, init) => {
-        const [cmd, k, v, ...rest] = JSON.parse(init.body);
-        let result = 'OK';
-        if (cmd === 'INCR') { kv.set(k, (kv.get(k) || 0) + 1); result = kv.get(k); }
-        else if (cmd === 'SET') { if (rest.includes('NX') && kv.has(k)) result = null; else kv.set(k, v); }
-        else if (cmd === 'RPUSH') { lists.push(v); result = lists.length; }
-        return {ok: true, json: async () => ({result})};
+        const run = ([cmd, k, v, ...rest]) => {
+            let result = 'OK';
+            if (cmd === 'INCR') { kv.set(k, (kv.get(k) || 0) + 1); result = kv.get(k); }
+            else if (cmd === 'SET') { if (rest.includes('NX') && kv.has(k)) result = null; else kv.set(k, v); }
+            else if (cmd === 'RPUSH') { lists.push(v); result = lists.length; }
+            return {result};
+        };
+        const body = JSON.parse(init.body);
+        return {ok: true, json: async () => url.endsWith('/pipeline') ? body.map(run) : run(body)};
     });
     return {kv, lists};
 };
@@ -80,4 +83,29 @@ test('ohne Salt oder Storage lehnt die API ab (fail closed)', async t => {
 test('Storage-Fehler → 503', async t => {
     t.mock.method(globalThis, 'fetch', async () => { throw new Error('down'); });
     assert.equal((await call(good())).code, 503);
+});
+
+test('unbekannte Felder werden nicht gespeichert, Koordinaten gerundet', async t => {
+    const {lists} = fakeKv(t);
+    assert.equal((await call({...good(), lat: 48.208212345, comment: 'Freitext', userLat: 48.1, email: 'a@b.at'})).code, 204);
+    const saved = JSON.parse(lists[0]);
+    assert.equal(saved.lat, 48.20821);
+    assert.deepEqual(Object.keys(saved).sort(), ['dev', 'lat', 'lng', 'modelVersion', 'onSite', 'placeId', 'predicted', 'sunAlt', 'sunAz', 't', 'vote']);
+    assert.doesNotMatch(lists[0], /Freitext|a@b\.at/);
+});
+
+test('Rate-Limit-Schlüssel enthalten nur Hashes und laufen ab', async t => {
+    const sent = [];
+    t.mock.method(globalThis, 'fetch', async (url, init) => { const b = JSON.parse(init.body); const cmds = url.endsWith('/pipeline') ? b : [b]; sent.push(...cmds); return {ok: true, json: async () => url.endsWith('/pipeline') ? cmds.map(() => ({result: 1})) : {result: init.body.includes('"SET"') ? 'OK' : 1}}; });
+    assert.equal((await call(good())).code, 204);
+    const keys = sent.map(c => c[1]).filter(k => k !== 'votes');
+    assert.equal(keys.length >= 3, true);
+    for (const k of keys) assert.doesNotMatch(k, /dev-12345678|1\.2\.3\.4/);
+    assert.ok(sent.some(c => c[0] === 'EXPIRE' || c.includes('EX')), 'TTL gesetzt');
+});
+
+test('onSite ist nur true, wenn es genau true ist', async t => {
+    const {lists} = fakeKv(t);
+    await call({...good(), onSite: 'true'});
+    assert.equal(JSON.parse(lists[0]).onSite, false);
 });
