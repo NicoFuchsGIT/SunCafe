@@ -4,15 +4,15 @@ Stand: Tests 93/93 grün (`npm test`), ESLint sauber, `pytest pipeline` 14/14 gr
 
 ## Mittel
 
-1. **Vote-Fehlermeldung wird nie angezeigt** (`js/ui.js`, `voteBox`). Nach jedem Ergebnis ruft der Handler `openPopup()` auf und baut den Inhalt neu. Danach schreibt er `box.lastChild.textContent = t('vote.error')` in die schon ersetzte Box. Bei `error` sieht man also nur frisch aktivierte Knöpfe ohne Hinweis. Fix: Meldung in `voteMsg` ablegen (z. B. `'vote.error'`) und beim Neuaufbau anzeigen, Knöpfe aktiv lassen.
+1. **Vote-Fehlermeldung wird nie angezeigt** *(behoben in 3.6)* (`js/ui.js`, `voteBox`). Nach jedem Ergebnis ruft der Handler `openPopup()` auf und baut den Inhalt neu. Danach schreibt er `box.lastChild.textContent = t('vote.error')` in die schon ersetzte Box. Bei `error` sieht man also nur frisch aktivierte Knöpfe ohne Hinweis. Fix: Meldung in `voteMsg` ablegen (z. B. `'vote.error'`) und beim Neuaufbau anzeigen, Knöpfe aktiv lassen.
 2. ~~Emojis als Bedienelemente~~ **Behoben:** Vote-Knöpfe nutzen Sprite-Icons (`i-sun`, `i-partial`, `i-shade`). Die übrigen Icons aus D1.5 sind weiter offen.
-3. **Vote-Zeitstempel veraltet** (`js/ui.js`). Die Nutzlast wird beim Öffnen des Popups gebaut, die API akzeptiert nur ±10 min. Wer länger wartet, bekommt 400 → „Senden fehlgeschlagen“. Fix: `t`/Sonnenstand erst beim Klick bauen.
-4. **Rebuild während des Sendens** (`update()` ruft `openPopup()` auf): Während `checkOnSite` (bis 8 s) oder dem Request wird das Popup neu gebaut, die Knöpfe sind wieder aktiv. Doppelklick ergibt dann 429 („schon bewertet“) trotz erfolgreichem ersten Vote. Fix: Status „sendet“ in `voteMsg` halten.
-5. **Overpass-Proxy cached auch Fehlerantworten** (`api/overpass.js`). Overpass antwortet bei Überlast oft mit HTTP 200 und `remark`/leeren `elements`. Das wird 1 h im CDN gehalten. Fix: nur cachen, wenn `elements` vorhanden und kein `remark` mit „runtime error“.
+3. **Vote-Zeitstempel veraltet** *(behoben in 3.6)* (`js/ui.js`). Die Nutzlast wird beim Öffnen des Popups gebaut, die API akzeptiert nur ±10 min. Wer länger wartet, bekommt 400 → „Senden fehlgeschlagen“. Fix: `t`/Sonnenstand erst beim Klick bauen.
+4. **Rebuild während des Sendens** *(behoben in 3.6)* (`update()` ruft `openPopup()` auf): Während `checkOnSite` (bis 8 s) oder dem Request wird das Popup neu gebaut, die Knöpfe sind wieder aktiv. Doppelklick ergibt dann 429 („schon bewertet“) trotz erfolgreichem ersten Vote. Fix: Status „sendet“ in `voteMsg` halten.
+5. **Overpass-Proxy cached auch Fehlerantworten** *(behoben in 3.6)* (`api/overpass.js`). Overpass antwortet bei Überlast oft mit HTTP 200 und `remark`/leeren `elements`. Das wird 1 h im CDN gehalten. Fix: nur cachen, wenn `elements` vorhanden und kein `remark` mit „runtime error“.
 
 ## Niedrig
 
-6. **Rate-Limit nicht atomar** (`api/_lib/storage.js`, `incrWithTtl`): `INCR` und `EXPIRE` getrennt. Scheitert `EXPIRE`, bleibt der Zähler dauerhaft und sperrt Gerät/IP. Besser per Pipeline/`SET NX EX` + `INCR` oder Lua.
+6. **Rate-Limit nicht atomar** *(behoben in 3.6)* (`api/_lib/storage.js`, `incrWithTtl`): `INCR` und `EXPIRE` getrennt. Scheitert `EXPIRE`, bleibt der Zähler dauerhaft und sperrt Gerät/IP. Besser per Pipeline/`SET NX EX` + `INCR` oder Lua.
 7. **Fallback-IP `unknown`** (`api/vote.js`): Fehlt jeder IP-Header, teilen sich alle ein Limit (60/h). Auf Vercel nicht relevant, nur zur Kenntnis.
 8. **Kein Origin-Check bei `/api/vote`**: Jeder kann Votes posten. Durch Rate-Limit begrenzt, `predicted` ist unverifizierbar. Für die Kalibrierung `onSite` und Modellversion getrennt auswerten.
 9. **Export lädt die ganze Liste** (`LRANGE 0 -1`). Bei sehr vielen Votes Antwortgröße/Zeit beachten (später paginieren).

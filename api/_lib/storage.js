@@ -26,10 +26,25 @@ async function command(...args) {
   return body.result;
 }
 
+// Mehrere Befehle in einer Anfrage (Upstash /pipeline), ausgeführt in Reihenfolge
+async function pipeline(cmds) {
+  const {url, token} = env();
+  if (!url || !token) throw new Error('storage not configured');
+  const r = await fetch(url.replace(/\/+$/, '') + '/pipeline', {
+    method: 'POST',
+    headers: {Authorization: 'Bearer ' + token, 'Content-Type': 'application/json'},
+    body: JSON.stringify(cmds.map(c => c.map(a => String(a)))),
+    signal: AbortSignal.timeout(5000)
+  });
+  const body = await r.json().catch(() => null);
+  if (!r.ok || !Array.isArray(body) || body.some(x => x.error)) throw new Error('storage error: ' + (r.status));
+  return body.map(x => x.result);
+}
+
 // Zähler mit Ablauf, z. B. fürs Rate-Limit: erhöht um 1 und setzt beim ersten Aufruf die Lebensdauer
 async function incrWithTtl(key, ttlSeconds) {
-  const n = await command('INCR', key);
-  if (n === 1) await command('EXPIRE', key, ttlSeconds);
+  // Ein Aufruf statt INCR+EXPIRE: stirbt die Anfrage dazwischen, bliebe der Zähler sonst ewig stehen. NX setzt die Frist nur beim ersten Mal.
+  const [n] = await pipeline([['INCR', key], ['EXPIRE', key, ttlSeconds, 'NX']]);
   return n;
 }
 

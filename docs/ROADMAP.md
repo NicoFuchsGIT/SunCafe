@@ -84,7 +84,7 @@ Ziel: 1-Tap-Votes zur Kalibrierung, rechtzeitig zur Terrassensaison.
 | 3.3 | UI im Popup: drei Knöpfe Sonne / Teils / Schatten mit SVG-Icons (keine Emojis, siehe E9 und D1.5 in [ROADMAP-DESIGN.md](ROADMAP-DESIGN.md)), optional Standortprüfung (≤ 150 m) oder Flag „nicht vor Ort“ | 4 h | F4.1, F4.4 |
 | 3.4 | `api/votes-export` (geschützt per Token) bzw. Skript für den CSV-Export | 2 h | F4.5 |
 | 3.5 | Datenschutzhinweis im Info-Dialog, Tests für die API | 3 h | NFR Datenschutz |
-| 3.6 | Nacharbeit aus dem [Code-Review](CODE-REVIEW.md): Vote-Fehlermeldung, frischer Zeitstempel beim Klick, Overpass-Proxy cached keine Fehlerantworten, Rate-Limit atomar | 3 h | §9 |
+| 3.6 ✅ | Nacharbeit aus dem [Code-Review](CODE-REVIEW.md): Vote-Fehlermeldung, frischer Zeitstempel beim Klick, Overpass-Proxy cached keine Fehlerantworten, Rate-Limit atomar | 3 h | §9 |
 
 **Fertig, wenn:** Votes landen kostenlos und anonym in der DB und lassen sich als CSV exportieren.
 
@@ -94,7 +94,7 @@ Ziel: 1-Tap-Votes zur Kalibrierung, rechtzeitig zur Terrassensaison.
 - `js/ui.js` hat keine Tests (Playwright-Smoke-Test für Popup und Vote inklusive Fehlerpfad).
 - `js/data.js`: `parseCafes` (Kettenfilter, Terrassenzuordnung, `ptype`), `fetchCafes` (Wien-Turbo und Fallback bei kaputter Datei), `geocode`.
 - `js/hours.js`: `openInfo` (offen, geschlossen, unklar, Zeitzone) und `wall`.
-- `api/overpass.js`: Antwort 200 mit `remark` bzw. leeren Elementen; `storage.incrWithTtl`: fehlgeschlagenes `EXPIRE`.
+- (`api/overpass.js` und `storage.incrWithTtl` sind mit 3.6 getestet; die UI-Teile von 3.6 – Fehlermeldung, Doppelversand, frischer Zeitstempel – bleiben ohne Test, bis `ui.js` einen Smoke-Test hat.)
 
 ---
 

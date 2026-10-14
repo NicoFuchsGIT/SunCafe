@@ -47,17 +47,26 @@ test('set mit nx liefert false, wenn der Schlüssel schon existiert', async t =>
     clearEnv();
 });
 
-test('incrWithTtl setzt die Lebensdauer nur beim ersten Aufruf', async t => {
+test('incrWithTtl zählt und setzt die Frist (NX) in einer einzigen Anfrage', async t => {
     setEnv();
-    const sent = [];
+    const reqs = [];
     let n = 0;
     t.mock.method(globalThis, 'fetch', async (url, init) => {
-        const cmd = JSON.parse(init.body); sent.push(cmd[0]);
-        return {ok: true, json: async () => ({result: cmd[0] === 'INCR' ? ++n : 1})};
+        reqs.push({url, body: JSON.parse(init.body)});
+        return {ok: true, json: async () => [{result: ++n}, {result: n === 1 ? 1 : 0}]};
     });
     assert.equal(await storage.incrWithTtl('c', 30), 1);
     assert.equal(await storage.incrWithTtl('c', 30), 2);
-    assert.deepEqual(sent, ['INCR', 'EXPIRE', 'INCR']);
+    assert.equal(reqs.length, 2);
+    assert.equal(reqs[0].url, 'https://kv.test/pipeline');
+    assert.deepEqual(reqs[0].body, [['INCR', 'c'], ['EXPIRE', 'c', '30', 'NX']]);
+    clearEnv();
+});
+
+test('incrWithTtl wirft, wenn ein Befehl der Pipeline fehlschlägt', async t => {
+    setEnv();
+    t.mock.method(globalThis, 'fetch', async () => ({ok: true, status: 200, json: async () => [{result: 1}, {error: 'ERR'}]}));
+    await assert.rejects(storage.incrWithTtl('c', 30), /storage error/);
     clearEnv();
 });
 

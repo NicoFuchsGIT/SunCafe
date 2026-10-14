@@ -15,12 +15,15 @@ const call = async (body, {method = 'POST', headers = {'x-real-ip': '1.2.3.4'}} 
 const fakeKv = t => {
     const kv = new Map(), lists = [];
     t.mock.method(globalThis, 'fetch', async (url, init) => {
-        const [cmd, k, v, ...rest] = JSON.parse(init.body);
-        let result = 'OK';
-        if (cmd === 'INCR') { kv.set(k, (kv.get(k) || 0) + 1); result = kv.get(k); }
-        else if (cmd === 'SET') { if (rest.includes('NX') && kv.has(k)) result = null; else kv.set(k, v); }
-        else if (cmd === 'RPUSH') { lists.push(v); result = lists.length; }
-        return {ok: true, json: async () => ({result})};
+        const run = ([cmd, k, v, ...rest]) => {
+            let result = 'OK';
+            if (cmd === 'INCR') { kv.set(k, (kv.get(k) || 0) + 1); result = kv.get(k); }
+            else if (cmd === 'SET') { if (rest.includes('NX') && kv.has(k)) result = null; else kv.set(k, v); }
+            else if (cmd === 'RPUSH') { lists.push(v); result = lists.length; }
+            return {result};
+        };
+        const body = JSON.parse(init.body);
+        return {ok: true, json: async () => url.endsWith('/pipeline') ? body.map(run) : run(body)};
     });
     return {kv, lists};
 };
@@ -93,7 +96,7 @@ test('unbekannte Felder werden nicht gespeichert, Koordinaten gerundet', async t
 
 test('Rate-Limit-Schlüssel enthalten nur Hashes und laufen ab', async t => {
     const sent = [];
-    t.mock.method(globalThis, 'fetch', async (url, init) => { sent.push(JSON.parse(init.body)); return {ok: true, json: async () => ({result: init.body.includes('"SET"') ? 'OK' : 1})}; });
+    t.mock.method(globalThis, 'fetch', async (url, init) => { const b = JSON.parse(init.body); const cmds = url.endsWith('/pipeline') ? b : [b]; sent.push(...cmds); return {ok: true, json: async () => url.endsWith('/pipeline') ? cmds.map(() => ({result: 1})) : {result: init.body.includes('"SET"') ? 'OK' : 1}}; });
     assert.equal((await call(good())).code, 204);
     const keys = sent.map(c => c[1]).filter(k => k !== 'votes');
     assert.equal(keys.length >= 3, true);
