@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Datenschutzerklärung – SunCafe</title>
+    <meta name="description" content="Datenschutzerklärung von SunCafe: keine Cookies, kein Tracking, welche Daten an Karten-, Wetter- und Hosting-Dienste gehen.">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/legal.css">
+</head>
+<body>
+<div class="wrap">
+    <nav class="top" aria-label="Navigation">
+        <a href="./"><span lang="de">← Zur Karte</span> / <span lang="en">Back to map</span></a>
+        <a href="#de" lang="de" hreflang="de">Deutsch</a>
+        <a href="#en" lang="en" hreflang="en">English</a>
+    </nav>
+    <main>
+        <h1>Datenschutzerklärung <span lang="en">/ Privacy policy</span></h1>
+        <p class="stand">Stand: 15. Oktober 2026 · <span lang="en">Last updated: 15 October 2026</span></p>
+        <p class="stand" lang="en">The German text is the authoritative version; the English text is a courtesy translation.</p>
+        <section id="de" lang="de">
+
+            <h2>Deutsch</h2>
+
+            <h3 id="verantwortlicher">1. Verantwortlicher</h3>
+            <p>Verantwortlich im Sinne der Datenschutz-Grundverordnung (DSGVO) ist die im <a href="impressum.html">Impressum</a> genannte Person. Kontakt für alle Datenschutzanfragen: <mark class="todo">[E-Mail-Adresse, wie im Impressum]</mark></p>
+
+            <h3 id="kurzfassung">2. Das Wichtigste in Kürze</h3>
+            <ul>
+                <li>Kein Konto, keine Registrierung, <strong>keine Cookies</strong>, kein Tracking, keine Webanalyse, keine Werbung.</li>
+                <li>Keine eingebetteten Fremdinhalte und keine Social-Media-Plugins. Schriften und Programmbibliotheken liegen auf dem eigenen Server (keine Google Fonts, kein CDN).</li>
+                <li>Deinen <strong>genauen Standort speichern wir nicht</strong>.</li>
+                <li>Technisch bedingt erfahren unser Hoster und die Kartendienste deine IP-Adresse und einen gerundeten Ort (siehe Abschnitte 3 bis 7).</li>
+                <li>Nur wenn du selbst eine Rückmeldung zur Sonnenlage sendest, speichern wir sie (Abschnitt 9).</li>
+            </ul>
+
+            <h3 id="hosting">3. Hosting und Server-Protokolle (Vercel)</h3>
+            <p>Diese Website und ihre serverseitigen Funktionen (Adressen unter <code>/api/</code>) werden bei Vercel Inc., USA, betrieben. Beim Aufruf verarbeitet Vercel technisch notwendig: IP-Adresse, Datum und Uhrzeit, aufgerufene Adresse (bei Abfragen von Cafés außerhalb von Wien samt auf etwa 100 m gerundeten Koordinaten), Browser- und Geräteangaben, Referrer und Statuscode. Wir werten diese Protokolle nicht aus.</p>
+            <p><strong>Zweck:</strong> Auslieferung der Seite, Stabilität und Sicherheit. <strong>Rechtsgrundlage:</strong> berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO. Vercel handelt als Auftragsverarbeiter. Mehr: <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Datenschutzerklärung von Vercel</a>.</p>
+
+            <h3 id="karte">4. Karte (OpenFreeMap)</h3>
+            <p>Dein Browser lädt Kartenkacheln, Schriften und Symbole direkt von <code>tiles.openfreemap.org</code> (Hyperknot Software Kft., Ungarn). Dabei erhält der Betreiber technisch deine IP-Adresse und erfährt, welcher Kartenausschnitt abgerufen wird. Nach der Datenschutzerklärung von OpenFreeMap (Stand Oktober 2026) werden IP-Adressen in den Zugriffsprotokollen standardmäßig nicht gespeichert. Ohne diese Verbindung kann keine Karte angezeigt werden. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO. Mehr: <a href="https://openfreemap.org/privacy/" target="_blank" rel="noopener">openfreemap.org/privacy</a>.</p>
+
+            <h3 id="lokale">5. Cafés, Bars, Restaurants (OpenStreetMap, Overpass)</h3>
+            <p>Für Wien (Umkreis von 5 km um den Stephansplatz) kommen die Daten aus Dateien auf unserem eigenen Server. Dabei wird nichts an Dritte weitergegeben.</p>
+            <p>Für alle anderen Orte ruft die App eine Funktion bei Vercel auf, die ihrerseits die Overpass-Server von OpenStreetMap abfragt. An diese Server gehen nur der auf etwa 100 m gerundete Ort und die gewählten Lokalarten, nicht deine IP-Adresse. Antwortet diese Funktion nicht, fragt dein Browser die Overpass-Server direkt ab (<code>overpass-api.de</code>, <code>lz4.overpass-api.de</code>, <code>overpass.private.coffee</code>, <code>overpass.kumi.systems</code>, <code>overpass.openstreetmap.fr</code>). Dann sehen deren Betreiber deine IP-Adresse und den gerundeten Ort. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (ohne diese Abfrage gibt es keine Ergebnisse).</p>
+
+            <h3 id="suche">6. Adresssuche und Bundesland (Nominatim)</h3>
+            <p>Wenn du eine Adresse suchst, wird dein Suchtext zusammen mit deiner IP-Adresse an <code>nominatim.openstreetmap.org</code> (OpenStreetMap Foundation) gesendet. Für Orte außerhalb von Wien fragt die App dort außerdem mit auf etwa 1 km gerundeten Koordinaten nach Land und Bundesland, damit gesetzliche Feiertage in Öffnungszeiten richtig gelten. Ergebnisse werden nur für die Dauer der Sitzung im Browser zwischengespeichert. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b bzw. f DSGVO (von dir ausgelöste Suche). Mehr: <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">Datenschutzrichtlinie der OSMF</a>.</p>
+
+            <h3 id="wetter">7. Wetter (Open-Meteo)</h3>
+            <p>Für die Wetteranzeige fragt dein Browser <code>api.open-meteo.com</code> mit auf etwa 1 km gerundeten Koordinaten ab. Open-Meteo erhält dabei technisch deine IP-Adresse. <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO. Mehr: <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener">open-meteo.com/en/terms</a>.</p>
+
+            <h3 id="standort">8. Dein Standort</h3>
+            <p>Beim Start und über den Knopf „Mein Standort“ fragt dein Browser, ob SunCafe deinen Standort verwenden darf. Nur wenn du zustimmst, wird er benutzt (Art. 6 Abs. 1 lit. a DSGVO; du kannst das jederzeit in den Browser- oder Geräteeinstellungen widerrufen). Der Standort wird im Browser verarbeitet, um die Karte zu zentrieren und die Orte in der Nähe zu suchen. An Dritte gehen nur die gerundeten Werte aus den Abschnitten 5 bis 7. Auf unseren Servern wird er nicht gespeichert. Den zuletzt gewählten Ort merkt sich dein Browser nur, bis du den Tab schließt.</p>
+            <p>Wenn du bei einer Rückmeldung „Ich bin vor Ort“ ankreuzt, wird dein Standort einmalig im Browser mit dem des Cafés verglichen (Abstand höchstens 150 m). Gesendet wird nur das Ergebnis „ja“ oder „nein“, nicht der Standort.</p>
+
+            <h3 id="rueckmeldungen">9. Rückmeldungen zur Sonnenlage</h3>
+            <p>Über die Knöpfe „Sonne“, „Teils Sonne“ und „Schatten“ im Café-Fenster kannst du melden, wie es vor Ort wirklich ist. Das ist freiwillig. Beim Tippen wird die Meldung sofort gesendet, vorher steht der Hinweis mit Link auf diesen Abschnitt im Fenster.</p>
+            <p><strong>Gespeichert werden:</strong> Kennung und Koordinaten des Cafés, Zeitpunkt, Sonnenhöhe und -richtung zu diesem Zeitpunkt, die Vorhersage des Modells, deine Auswahl, die Modellversion, „vor Ort“ ja oder nein und eine <em>pseudonyme Geräte-Kennung</em>. Diese Kennung ist eine zufällige Zeichenfolge, die dein Browser beim ersten Senden erzeugt. Auf dem Server wird sie mit einem geheimen Zusatzwert (Salt) gehasht, die Zeichenfolge selbst wird dort nicht gespeichert.</p>
+            <p><strong>Nicht gespeichert werden:</strong> Name, E-Mail, Freitext, dein Standort, deine IP-Adresse im Klartext.</p>
+            <p><strong>Zweck:</strong> Prüfen und Verbessern der Sonnen-Schätzung sowie Schutz vor Missbrauch (Mehrfachmeldungen, automatisierte Meldungen). <strong>Rechtsgrundlage:</strong> berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO. Du kannst dem jederzeit widersprechen (Art. 21 DSGVO).</p>
+            <p><strong>Missbrauchsschutz:</strong> Für die Begrenzung der Meldungen werden Zähler geführt: je gehashter IP-Adresse höchstens 60 Meldungen pro Stunde, je gehashter Geräte-Kennung höchstens 20 pro Stunde und eine Meldung je Café und Gerät pro 30 Minuten. Diese Zähler enthalten die IP-Adresse nur als Hash und verfallen automatisch nach einer Stunde bzw. 30 Minuten.</p>
+            <p><strong>Speicherung und Empfänger:</strong> Die Meldungen liegen in einer Datenbank von Upstash, Inc. (Redis, Auftragsverarbeiter), Region: <mark class="todo">[Region der Datenbank, z. B. „EU (Frankfurt)“ – aus dem Upstash-Dashboard übernehmen]</mark>. Ausgewertet werden die Meldungen nur vom Betreiber. <strong>Dauer:</strong> Die Meldungen werden gespeichert, und nach 6 Monaten automatisch gelöscht. Auszüge für Auswertungen löscht der Betreiber ebenfalls spätestens nach 6 Monaten. Auf Anfrage lösche ich Meldungen auch früher.</p>
+            <p><strong>Auskunft und Löschung:</strong> Weil Meldungen nur über die Geräte-Kennung zugeordnet werden, kann ich sie dir nur zuordnen, wenn du mir den Wert des Browser-Eintrags <code>suncafe.device</code> nennst (in den Entwicklerwerkzeugen deines Browsers unter „Speicher“ bzw. „Local Storage“, siehe <a href="cookies.html">Cookies &amp; Speicher</a>). Ohne diesen Wert ist eine Zuordnung nicht möglich (Art. 11 DSGVO).</p>
+
+            <h3 id="speicher">10. Cookies und Browser-Speicher</h3>
+            <p>SunCafe setzt keine Cookies. Welche wenigen Einträge im Browser-Speicher angelegt werden und warum, steht unter <a href="cookies.html">Cookies &amp; Speicher</a>.</p>
+
+            <h3 id="links">11. Externe Links</h3>
+            <p>Folgende Links führen erst nach deinem Klick zu anderen Anbietern, die dann eigene Daten verarbeiten:</p>
+            <ul>
+                <li><strong>Route zu Fuß:</strong> Google Maps (Google) oder, auf Apple-Geräten, Apple Karten (Apple). In der Adresse steht nur das Ziel (die Koordinaten des Cafés), nicht dein Standort.</li>
+                <li><strong>„Ergebnis falsch?“:</strong> öffnet ein vorausgefülltes Formular für ein Problem (Issue) auf GitHub (Café, Koordinaten, Zeitpunkt). Abgeschickt wird es erst, wenn du dich bei GitHub anmeldest und es selbst absendest. Beiträge dort sind öffentlich.</li>
+                <li><strong>Instagram, OpenStreetMap, Open-Meteo und weitere Quellenangaben</strong> im Info-Dialog.</li>
+            </ul>
+
+            <h3 id="drittland">12. Empfänger und Übermittlung in Drittländer</h3>
+            <p>Empfänger sind die in den Abschnitten 3 bis 7 und 9 genannten Dienste: Vercel Inc. (Hosting, USA), Upstash, Inc. (Datenbank) sowie OpenFreeMap, die Betreiber der Overpass-Server, die OpenStreetMap Foundation (Nominatim) und Open-Meteo. Einige dieser Anbieter sitzen außerhalb der EU, insbesondere in den USA und im Vereinigten Königreich. Soweit personenbezogene Daten dorthin gelangen, stützt sich die Übermittlung auf einen Angemessenheitsbeschluss der EU-Kommission (z. B. EU-U.S. Data Privacy Framework, Vereinigtes Königreich) oder auf Standardvertragsklauseln.</p>
+
+            <h3 id="rechte">13. Deine Rechte</h3>
+            <p>Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21 DSGVO). Eine erteilte Einwilligung (etwa für den Standort) kannst du jederzeit mit Wirkung für die Zukunft widerrufen. Schreib dazu an <mark class="todo">[E-Mail-Adresse, wie im Impressum]</mark>.</p>
+            <p>Du hast außerdem das Recht, dich bei einer Datenschutzbehörde zu beschweren, in Österreich bei der Datenschutzbehörde, Barichgasse 40–42, 1030 Wien, <a href="https://www.dsb.gv.at/" target="_blank" rel="noopener">www.dsb.gv.at</a>, oder bei der Behörde deines gewöhnlichen Aufenthaltsorts.</p>
+
+            <h3 id="sonstiges">14. Sonstiges</h3>
+            <p>Du bist nicht verpflichtet, Daten bereitzustellen; ohne Standort kannst du Adresse oder Kartenpunkt wählen. Es findet keine automatisierte Entscheidungsfindung im Sinne von Art. 22 DSGVO statt. Die Verbindung zur Website ist per HTTPS verschlüsselt. Diese Erklärung ändere ich, wenn sich die Website ändert; maßgeblich ist der oben genannte Stand.</p>
+
+        </section>
+        <section id="en" lang="en">
+
+            <h2>English</h2>
+
+            <h3 id="controller">1. Controller</h3>
+            <p>The controller under the General Data Protection Regulation (GDPR) is the person named in the <a href="impressum.html#en">legal notice</a>. Contact for all privacy requests: <mark class="todo">[email address, as in the legal notice]</mark></p>
+
+            <h3 id="summary">2. The short version</h3>
+            <ul>
+                <li>No account, no registration, <strong>no cookies</strong>, no tracking, no web analytics, no advertising.</li>
+                <li>No embedded third-party content and no social media plugins. Fonts and code libraries are served from our own server (no Google Fonts, no CDN).</li>
+                <li>We <strong>do not store your exact location</strong>.</li>
+                <li>Technically, our host and the map services learn your IP address and a rounded place (see sections 3 to 7).</li>
+                <li>We only store a report about sun or shade if you send one yourself (section 9).</li>
+            </ul>
+
+            <h3 id="hosting-en">3. Hosting and server logs (Vercel)</h3>
+            <p>This website and its server-side functions (addresses under <code>/api/</code>) run on Vercel Inc., USA. When you visit, Vercel technically has to process: IP address, date and time, the requested address (for café queries outside Vienna including coordinates rounded to about 100 m), browser and device details, referrer and status code. We do not analyse these logs.</p>
+            <p><strong>Purpose:</strong> delivering the page, stability and security. <strong>Legal basis:</strong> legitimate interest, Art. 6(1)(f) GDPR. Vercel acts as a processor. More: <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Vercel privacy policy</a>.</p>
+
+            <h3 id="map">4. Map (OpenFreeMap)</h3>
+            <p>Your browser loads map tiles, fonts and symbols directly from <code>tiles.openfreemap.org</code> (Hyperknot Software Kft., Hungary). The operator technically receives your IP address and learns which map section is requested. According to OpenFreeMap’s privacy policy (as of October 2026), IP addresses are not stored in access logs by default. Without this connection no map can be shown. <strong>Legal basis:</strong> Art. 6(1)(f) GDPR. More: <a href="https://openfreemap.org/privacy/" target="_blank" rel="noopener">openfreemap.org/privacy</a>.</p>
+
+            <h3 id="venues">5. Cafés, bars, restaurants (OpenStreetMap, Overpass)</h3>
+            <p>For Vienna (5 km around Stephansplatz) the data comes from files on our own server. Nothing is passed on to third parties.</p>
+            <p>For all other places the app calls a function at Vercel, which in turn queries the Overpass servers of OpenStreetMap. Only the place rounded to about 100 m and the chosen venue types go to those servers, not your IP address. If that function does not answer, your browser queries the Overpass servers directly (<code>overpass-api.de</code>, <code>lz4.overpass-api.de</code>, <code>overpass.private.coffee</code>, <code>overpass.kumi.systems</code>, <code>overpass.openstreetmap.fr</code>). Their operators then see your IP address and the rounded place. <strong>Legal basis:</strong> Art. 6(1)(f) GDPR (without this query there are no results).</p>
+
+            <h3 id="search">6. Address search and state (Nominatim)</h3>
+            <p>When you search for an address, your search text is sent together with your IP address to <code>nominatim.openstreetmap.org</code> (OpenStreetMap Foundation). For places outside Vienna the app also asks there, with coordinates rounded to about 1 km, for country and state so that public holidays in opening hours apply correctly. Results are cached in the browser only for the duration of the session. <strong>Legal basis:</strong> Art. 6(1)(b) or (f) GDPR (search triggered by you). More: <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">OSMF privacy policy</a>.</p>
+
+            <h3 id="weather">7. Weather (Open-Meteo)</h3>
+            <p>To show the weather, your browser queries <code>api.open-meteo.com</code> with coordinates rounded to about 1 km. Open-Meteo technically receives your IP address. <strong>Legal basis:</strong> Art. 6(1)(f) GDPR. More: <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener">open-meteo.com/en/terms</a>.</p>
+
+            <h3 id="location">8. Your location</h3>
+            <p>At start-up and via the “My location” button your browser asks whether SunCafe may use your location. It is only used if you agree (Art. 6(1)(a) GDPR; you can withdraw this at any time in your browser or device settings). The location is processed in the browser to centre the map and search nearby places. Only the rounded values from sections 5 to 7 go to third parties. It is not stored on our servers. Your browser remembers the last chosen place only until you close the tab.</p>
+            <p>If you tick “I’m here” when sending a report, your location is compared once in the browser with the café’s (at most 150 m apart). Only the result “yes” or “no” is sent, not the location.</p>
+
+            <h3 id="reports">9. Reports about sun and shade</h3>
+            <p>With the buttons “Sun”, “Partly sunny” and “Shade” in the café panel you can report what it is really like on site. This is voluntary. Tapping sends the report immediately; before that, the panel shows a notice linking to this section.</p>
+            <p><strong>Stored:</strong> ID and coordinates of the café, time, sun altitude and direction at that time, the model’s prediction, your choice, the model version, “on site” yes or no, and a <em>pseudonymous device ID</em>. This ID is a random string your browser creates when you first send a report. On the server it is hashed with a secret salt; the string itself is not stored there.</p>
+            <p><strong>Not stored:</strong> name, email, free text, your location, your IP address in plain text.</p>
+            <p><strong>Purpose:</strong> checking and improving the sun estimate and protecting against abuse (repeated or automated reports). <strong>Legal basis:</strong> legitimate interest, Art. 6(1)(f) GDPR. You can object at any time (Art. 21 GDPR).</p>
+            <p><strong>Abuse protection:</strong> counters limit reports: at most 60 per hour per hashed IP address, at most 20 per hour per hashed device ID, and one report per café and device every 30 minutes. These counters contain the IP address only as a hash and expire automatically after one hour or 30 minutes.</p>
+            <p><strong>Storage and recipients:</strong> Reports are kept in a database from Upstash, Inc. (Redis, processor), region: <mark class="todo">[database region, e.g. “EU (Frankfurt)” – copy from the Upstash dashboard]</mark>. Only the operator analyses the reports. <strong>Retention:</strong> Reports are automatically deleted after 6 months. The operator also deletes extracts used for analysis after 6 months at the latest. On request I will delete reports earlier.</p>
+            <p><strong>Access and erasure:</strong> Because reports are linked only via the device ID, I can only match them to you if you tell me the value of the browser entry <code>suncafe.device</code> (in your browser’s developer tools under “Storage” or “Local Storage”, see <a href="cookies.html#en">cookies &amp; storage</a>). Without that value matching is not possible (Art. 11 GDPR).</p>
+
+            <h3 id="storage">10. Cookies and browser storage</h3>
+            <p>SunCafe does not set cookies. Which few entries are created in browser storage, and why, is listed under <a href="cookies.html#en">cookies &amp; storage</a>.</p>
+
+            <h3 id="links-en">11. External links</h3>
+            <p>These links lead to other providers only after you click, and they then process their own data:</p>
+            <ul>
+                <li><strong>Walking route:</strong> Google Maps (Google) or, on Apple devices, Apple Maps (Apple). The address contains only the destination (the café’s coordinates), not your location.</li>
+                <li><strong>“Result wrong?”:</strong> opens a pre-filled form for an issue on GitHub (café, coordinates, time). It is only submitted once you sign in to GitHub and send it yourself. Posts there are public.</li>
+                <li><strong>Instagram, OpenStreetMap, Open-Meteo and other source credits</strong> in the info dialog.</li>
+            </ul>
+
+            <h3 id="transfers">12. Recipients and transfers to third countries</h3>
+            <p>Recipients are the services named in sections 3 to 7 and 9: Vercel Inc. (hosting, USA), Upstash, Inc. (database), OpenFreeMap, the operators of the Overpass servers, the OpenStreetMap Foundation (Nominatim) and Open-Meteo. Some of these providers are located outside the EU, in particular in the USA and the United Kingdom. Where personal data reaches them, the transfer relies on an adequacy decision of the European Commission (e.g. EU-U.S. Data Privacy Framework, United Kingdom) or on standard contractual clauses.</p>
+
+            <h3 id="rights">13. Your rights</h3>
+            <p>You have the right of access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and objection (Art. 21 GDPR). You can withdraw consent you have given (for example for location) at any time with effect for the future. Write to <mark class="todo">[email address, as in the legal notice]</mark>.</p>
+            <p>You also have the right to lodge a complaint with a supervisory authority, in Austria the Datenschutzbehörde, Barichgasse 40–42, 1030 Vienna, <a href="https://www.dsb.gv.at/" target="_blank" rel="noopener">www.dsb.gv.at</a>, or the authority of your place of habitual residence.</p>
+
+            <h3 id="other">14. Other</h3>
+            <p>You are not obliged to provide data; without a location you can choose an address or a point on the map. There is no automated decision-making within the meaning of Art. 22 GDPR. The connection to the website is encrypted with HTTPS. I will amend this policy when the website changes; the date above applies.</p>
+
+        </section>
+    </main>
+    <nav class="foot" aria-label="Rechtliches / Legal">
+        <a href="impressum.html"><span lang="de">Impressum</span> / <span lang="en">Legal notice</span></a> <a href="datenschutz.html" aria-current="page"><span lang="de">Datenschutzerklärung</span> / <span lang="en">Privacy policy</span></a> <a href="cookies.html"><span lang="de">Cookies &amp; Speicher</span> / <span lang="en">Cookies &amp; storage</span></a> <a href="nutzungsbedingungen.html"><span lang="de">Nutzungsbedingungen</span> / <span lang="en">Terms of use</span></a>
+    </nav>
+</div>
+</body>
+</html>

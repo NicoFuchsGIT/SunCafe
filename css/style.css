@@ -15,9 +15,10 @@ html,body{height:100%;margin:0;overflow:hidden;font-family:"Bricolage Grotesque"
 
 /* ---------- Grundelemente ---------- */
 button{font:inherit;font-size:14px;padding:9px 12px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer}
-button:focus-visible,input:focus-visible,select:focus-visible,li:focus-visible,a:focus-visible,#side:focus-visible,#sheet:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
-input[type=search]{flex:1;min-width:0;min-height:48px;padding:9px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:16px} /* 16 px: iOS zoomt sonst beim Fokus */
-select{width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+/* Fokusrahmen in Textfarbe: das Gelb (--sun) hat auf hellem Grund nur ~1,7:1, gefordert sind 3:1 (WCAG 1.4.11) */
+button:focus-visible,input:focus-visible,select:focus-visible,li:focus-visible,a:focus-visible,#side:focus-visible,#sheet:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+input[type=search]{flex:1;min-width:0;min-height:48px;padding:9px 14px;border:1px solid var(--track);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:16px} /* 16 px: iOS zoomt sonst beim Fokus */
+select{width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--track);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
 select.auto{width:auto}
 .icon{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em;flex:none}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 16px;font-weight:600;font-size:15px;box-shadow:var(--shadow);border:0}
@@ -30,7 +31,7 @@ select.auto{width:auto}
 .pill:empty{display:none}
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);font-weight:600;white-space:nowrap}
 .chip .icon{width:18px;height:18px}
-.chip[aria-pressed=true]{background:var(--sun);border-color:var(--sun);color:#14213d}
+.chip[aria-pressed=true]{background:var(--sun);border-color:var(--ink);color:#14213d} /* Rand in Textfarbe: der Zustand soll nicht nur am Gelb hängen (3:1) */
 
 /* ---------- Gerüst: Karte im Vollbild, alles andere schwebt ---------- */
 #app{position:relative;height:100%;height:100dvh;overflow:hidden} /* dvh: mobil nicht unter der Adressleiste */
@@ -85,6 +86,10 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .btn-route .icon{width:22px;height:22px}
 .route-alt{display:block;margin-top:8px;padding:10px 0;text-align:center;font-size:14px;color:var(--ink)}
 .fb-link{display:inline-block;margin-top:8px;padding:10px 0;font-size:13px;color:var(--mute)}
+.legal-links,.legal-row{display:flex;flex-wrap:wrap;gap:0 16px}
+.legal-links{flex:none;padding:0 16px calc(4px + env(safe-area-inset-bottom));border-top:1px solid var(--line);font-size:13px}
+.legal-links a,.legal-row a{padding:8px 0;color:var(--mute)}
+.legal-row a{color:var(--ink)}
 
 /* Liste: Spalte links (Desktop) bzw. Vollbild-Overlay (mobil) */
 #side{position:absolute;z-index:30;top:0;bottom:0;left:0;width:var(--side-w);display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--bg)}
@@ -99,7 +104,8 @@ li.sel{background:var(--card);box-shadow:inset 4px 0 0 var(--sun)}
 .dot{width:14px;height:14px;border-radius:50%;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
 .dot.pending{background:#b8c0cc}
 .dot.sun{background:var(--sun)}.dot.shade{background:var(--shade)}.dot.night{background:#b8c0cc}
-li.closed{opacity:.5}
+li.closed .nm,li.closed .sm{color:var(--mute)} /* geschlossen: gedämpft über Farbe statt opacity, Text bleibt ≥ 4,5:1 */
+li.closed .dot,li.closed .sm .icon{opacity:.55}
 .nm{font-weight:600;font-size:15px}.sub{font-size:12.5px;color:var(--mute)}
 .meta{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .sm{font-size:12.5px;font-weight:600;white-space:nowrap}.sm:empty{display:none}
@@ -162,6 +168,8 @@ dialog.modal::backdrop{background:rgba(10,15,25,.5)}
 .vote-site{display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px;font-size:13px;color:var(--mute)}
 .vote-site input{width:20px;height:20px;accent-color:var(--sun)}
 #sheet .vote-note{font-size:13px;color:var(--mute)}
+#sheet .vote-privacy{margin:4px 0 0;line-height:1.4}
+#sheet .vote-privacy a{color:var(--ink)}
 
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 

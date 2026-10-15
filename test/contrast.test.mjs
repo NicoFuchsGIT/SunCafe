@@ -35,3 +35,22 @@ test('Markerfüllung und -rand heben sich von Weiß und vom dunklen Kartengrund 
         assert.ok(ratio(rim, '#ffffff') >= 3, `${key}: Rand auf Weiß ${ratio(rim, '#ffffff').toFixed(2)}`);
     }
 });
+
+// WCAG 2.2: Fokusrahmen und Feldränder brauchen 3:1 (1.4.11), Text 4,5:1; „geschlossen“ darf Text nicht per opacity ausbleichen
+test('Fokusrahmen nutzt die Textfarbe (nicht das Gelb) und hat in beiden Modi mindestens 3:1', () => {
+    const rule = css.match(/button:focus-visible[^{]*\{([^}]*)\}/)[1];
+    assert.match(rule, /outline:\s*[3-9]px solid var\(--ink\)/, rule);
+    for (const [name, th] of [['hell', light], ['dunkel', dark]]) for (const bg of ['bg', 'card']) assert.ok(ratio(th.ink, th[bg]) >= 3, `${name}: ink auf ${bg}`);
+});
+test('Geschlossene Listeneinträge bleiben lesbar: keine opacity, Text in --mute (≥ 4,5:1)', () => {
+    assert.ok(!/li\.closed\{[^}]*opacity/.test(css), 'li.closed darf nicht per opacity ausbleichen');
+    assert.match(css, /li\.closed \.nm[^{]*\{color:var\(--mute\)\}/);
+});
+test('Eingabefelder haben einen Rand mit mindestens 3:1 (--track) in beiden Modi', () => {
+    assert.match(css, /input\[type=search\]\{[^}]*border:1px solid var\(--track\)/);
+    assert.match(css, /select\{[^}]*border:1px solid var\(--track\)/);
+    for (const [name, th] of [['hell', light], ['dunkel', dark]]) assert.ok(ratio(th.track, th.card) >= 3, `${name}: track auf card ${ratio(th.track, th.card).toFixed(2)}`);
+});
+test('Gedrückter Chip zeigt den Zustand auch über den Rand in Textfarbe, nicht nur über Gelb', () => {
+    assert.match(css, /\.chip\[aria-pressed=true\]\{[^}]*border-color:var\(--ink\)/);
+});

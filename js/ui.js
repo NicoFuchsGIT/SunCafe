@@ -15,9 +15,9 @@ import {isApple, googleUrl, appleUrl} from './route.js';
 let voteOnSite = false, voteMsg = {};
 const voteBusy = new Set(), voteErr = new Set(); // pro Café: Senden läuft / letzter Versuch fehlgeschlagen (überlebt das Neuaufbauen des Sheets)
 let kinds = new Set(['cafe']); // gewählte Lokalarten (einzeln wählbar, mindestens eine)
-// Letzter Ort aus der Vorsitzung: Karte und graue Marker erscheinen sofort, die Position folgt (D3.4)
+// Letzter Ort aus dieser Sitzung (sessionStorage: nach Schließen des Tabs weg, kein Standortverlauf im Browser): Karte und graue Marker erscheinen sofort, die Position folgt (D3.4)
 const LAST_KEY = 'suncafe.last';
-const lastPlace = (() => { try { const p = JSON.parse(localStorage.getItem(LAST_KEY)); return p && Number.isFinite(p.lat) && Number.isFinite(p.lng) ? {lat:p.lat, lng:p.lng} : null; } catch(e) { return null; } })();
+const lastPlace = (() => { try { const p = JSON.parse(sessionStorage.getItem(LAST_KEY)); return p && Number.isFinite(p.lat) && Number.isFinite(p.lng) ? {lat:p.lat, lng:p.lng} : null; } catch(e) { return null; } })();
 let place = {...(lastPlace || WIEN)}, cafes = [], wx = null, t0 = null, curId = null, mapReady = false, tz = null, dark = false;
 const $ = id => document.getElementById(id);
 const setStatus = msg => { $('status').textContent = msg; };
@@ -160,7 +160,7 @@ function update() {
         li.querySelector('.nm').textContent = c.name || t('cafe.noName');
         li.querySelector('.sub').textContent = (kinds.size > 1 && c.kind ? t('kind.' + c.kind) + ' · ' : '') + stateText(c) + (c.hof && c.state !== 'night' ? t('state.courtyard') : '') + ' · ' + c.info.text;
         const go = () => { setView('map'); select(c.id, true); };
-        li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
+        li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
         L.appendChild(li);
     }
     $('status').textContent = t('status.count', {n: rows.length, total: cafes.length}) + (night ? t('status.night') : '') + (cafes.some(c => !c.calc) ? t('status.calc') : '');
@@ -189,15 +189,18 @@ function select(id, zoomIn = false) {
 const stateText = c => c.state === 'sun' && c.partial ? t('state.partial') : t('state.' + c.state);
 // „Stimmt das gerade?“ mit drei Knöpfen (F4.1); optional Standortprüfung (F4.4)
 function voteBox(c) {
-    const box = document.createElement('div'); box.className = 'vote';
-    const q = document.createElement('div'); q.className = 'vote-q'; q.textContent = t('vote.q'); box.appendChild(q);
+    const box = document.createElement('div'); box.className = 'vote'; box.setAttribute('role', 'group'); box.setAttribute('aria-labelledby', 'vote-q');
+    const q = document.createElement('div'); q.className = 'vote-q'; q.id = 'vote-q'; q.textContent = t('vote.q'); box.appendChild(q);
     if (c.state === 'night') { box.hidden = true; return box; } // nachts gibt es nichts zu bewerten
     const note = txt => { const n = document.createElement('p'); n.className = 'vote-note'; n.textContent = txt; box.appendChild(n); };
     const sp = SunCalc.getPosition(new Date(), c.lat, c.lng);
-    const payload = +$('slider').value ? null : buildVote(c, {alt: sp.altitude, az: sp.azimuth + Math.PI, device: deviceId()});
+    const payload = +$('slider').value ? null : buildVote(c, {alt: sp.altitude, az: sp.azimuth + Math.PI, device: ''}); // nur zur Prüfung; die echte Geräte-ID entsteht erst beim Senden (Datensparsamkeit)
     if (!payload) { if (+$('slider').value) note(t('vote.nowonly')); else box.hidden = true; return box; }
     if (voteBusy.has(c.id)) { note(t('vote.busy')); return box; } // kein Doppelversand beim Neuaufbau
     if (voteMsg[c.id] || votedRecently(c.id)) { note(t(voteMsg[c.id] || 'vote.thanks')); return box; }
+    // Hinweis vor dem Absenden (Art. 13 DSGVO): was gespeichert wird, mit Link zur Datenschutzerklärung
+    const priv = document.createElement('p'); priv.className = 'vote-note vote-privacy'; priv.append(t('vote.notice') + ' ');
+    const pa = document.createElement('a'); pa.href = 'datenschutz.html#' + (getLang() === 'en' ? 'reports' : 'rueckmeldungen'); pa.textContent = t('legal.privacy'); priv.appendChild(pa); box.appendChild(priv);
     const row = document.createElement('div'); row.className = 'vote-row';
     const btns = ['sun', 'part', 'shade'].map(v => {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'vote-btn';
@@ -227,8 +230,8 @@ function voteBox(c) {
     return box;
 }
 const APPLE = isApple(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
-function mapsPref(set) { // zuletzt benutzte Karten-App auf Apple-Geräten
-    try { if (set) localStorage.setItem('suncafe.maps', set); else return localStorage.getItem('suncafe.maps'); } catch(e) {}
+function mapsPref(set) { // zuletzt benutzte Karten-App auf Apple-Geräten (nur in dieser Sitzung)
+    try { if (set) sessionStorage.setItem('suncafe.maps', set); else return sessionStorage.getItem('suncafe.maps'); } catch(e) {}
     return null;
 }
 function openSheet(id) {
@@ -314,7 +317,7 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
     const mine = place = {lat, lng};
     const rgP = knownRg ? Promise.resolve(knownRg) : region(lat, lng);
     closeSheet(true);
-    try { localStorage.setItem(LAST_KEY, JSON.stringify({lat, lng})); } catch(e) {}
+    try { sessionStorage.setItem(LAST_KEY, JSON.stringify({lat, lng})); } catch(e) {}
     prefetchHorizon(lat, lng);
     setSrc('center', {type:'Point', coordinates:[lng, lat]});
     if (move) map.flyTo({center:[lng, lat], zoom:Math.max(map.getZoom(), 15.5)});

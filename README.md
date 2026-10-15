@@ -10,6 +10,7 @@ Quellcode: https://github.com/NicoFuchsGIT/SunCafe
 
 ```
 index.html        Gerüst und Einbindung der Bibliotheken
+impressum.html, datenschutz.html, cookies.html, nutzungsbedingungen.html   Rechtstexte (DE und EN auf einer Seite), Stile in css/legal.css, verlinkt im Info-Dialog und unter der Liste
 css/style.css     Styles
 js/ui.js          Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung (ES-Modul)
 js/config.js      Einstellungen: Radien, Standardhöhe, Terrassen-Offset, Augenhöhe, Kettenliste, Overpass-Server …
@@ -48,6 +49,16 @@ Wie daraus Sonne und Schatten werden: [docs/METHODIK.md](docs/METHODIK.md).
 Daten © OpenStreetMap contributors (ODbL).
 Datenquelle: Stadt Wien – data.wien.gv.at (CC BY 4.0).
 Gelände: © offene Daten Österreichs – Digitales Geländemodell (DGM) Österreich.
+
+## Datenschutz und Recht
+
+Grundsätze, die Texte und Tests (`test/legal.test.mjs`) voraussetzen:
+
+- Keine Cookies, keine Webanalyse, keine eingebetteten Fremdinhalte, Schriften und Bibliotheken selbst gehostet.
+- `localStorage` nur in `js/i18n.js` (Sprache, nur nach Auswahl) und `js/vote.js` (Geräte-ID und Sperrzeit, erst beim Senden eines Votes). Alles andere (letzter Ort, Zwischenspeicher) liegt in `sessionStorage`. Neue Einträge: in `cookies.html` ergänzen und prüfen, ob eine Einwilligung nötig wird (§ 165 Abs. 3 TKG 2021).
+- Koordinaten gehen nur gerundet raus: Overpass 3 Stellen (~100 m), Wetter und Bundesland 2 Stellen (~1 km).
+- Neuer Drittdienst: Host in die CSP (`vercel.json`) **und** in `datenschutz.html` eintragen (der Test prüft das).
+- Vor dem Livegang in `impressum.html` und `datenschutz.html` die gelb markierten Platzhalter (Name, Anschrift, E-Mail, Datenbank-Region) ausfüllen; `npm test` zeigt sie als TODO an.
 
 ## Hinweise
 
