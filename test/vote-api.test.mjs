@@ -109,3 +109,13 @@ test('onSite ist nur true, wenn es genau true ist', async t => {
     await call({...good(), onSite: 'true'});
     assert.equal(JSON.parse(lists[0]).onSite, false);
 });
+
+test('fremde Origin wird abgelehnt, gleiche oder fehlende Origin angenommen', async t => {
+    fakeKv(t);
+    let n = 0; // eigenes Gerät je Aufruf, sonst greift die Ort-Sperre
+    const withHeaders = headers => call({...good(), deviceId: 'dev-0000000' + n++}, {headers: {host: 'suncafe.test', 'x-real-ip': '1.2.3.4', ...headers}});
+    assert.equal((await withHeaders({origin: 'https://evil.example'})).code, 403);
+    assert.equal((await withHeaders({origin: 'kein-url'})).code, 403);
+    assert.equal((await withHeaders({origin: 'https://suncafe.test'})).code, 204);
+    assert.equal((await withHeaders({})).code, 204);
+});

@@ -19,7 +19,7 @@ js/horizon.js     Horizontmaske pro Messpunkt (180 Sektoren à 2°, uint8) und S
 js/sunminutes.js  Sonnenminuten im Zeitfenster (Standard 2 h, 5-min-Schritt), Öffnungszeiten berücksichtigt, ohne DOM
 js/hours.js       Ortszeit und Öffnungszeiten, ohne DOM
 js/data.js        Datenquellen: Overpass, wien.json, Nominatim, Open-Meteo, Gebäude aus Kartenkacheln
-vendor/           selbst gehostete Bibliotheken: MapLibre GL 4.7.1, SunCalc 1.9.0, opening_hours 3.8.0 (mit Lizenzen; Version beim Update auch in package.json ändern)
+vendor/           selbst gehostete Bibliotheken: MapLibre GL 4.7.1, SunCalc 1.9.0, opening_hours 3.8.0, i18next 21.10.0 (von opening_hours benötigt; mit Lizenzen; Version beim Update auch in package.json ändern)
 test/             Tests mit node:test, Start mit `npm ci && npm test` (Node ≥ 18); SunCalc und opening_hours als devDependencies in denselben Versionen wie in index.html
 eslint.config.mjs ESLint-Regeln, Prüfung mit `npm run lint` (vorher einmal `npm install`)
 api/overpass.js   Vercel-Funktion: fragt Overpass serverseitig (mit Cache), nimmt nur lat/lng/ptype an und baut die Abfrage selbst

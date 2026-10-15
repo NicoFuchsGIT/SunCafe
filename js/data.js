@@ -121,13 +121,13 @@ export async function region(lat, lng) {
     return null;
 }
 
-// Adresssuche: {lat, lng, rg} oder null; undefined, wenn die letzte Anfrage zu kurz her ist
+// Adresssuche: {lat, lng, rg} oder null; wartet bei Bedarf, bis die Nominatim-Pause (1,1 s) vorbei ist
 export async function geocode(q) {
     const key = 'nom:' + q.toLowerCase();
     let hit = null;
     try { hit = JSON.parse(localStorage.getItem(key)); } catch(x) {}
     if (hit) return hit;
-    if (Date.now() - lastNom < 1100) return undefined; lastNom = Date.now();
+    await nomSlot();
     try {
         const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&accept-language=de&q=' + encodeURIComponent(q));
         const j = await r.json(); const a = j[0] && j[0].address;
@@ -142,6 +142,7 @@ export async function geocode(q) {
 export async function fetchWeather(lat, lng) {
     // unixtime: Zeitpunkte unabhängig von der Browser-Zeitzone; timezone=auto liefert die Zeitzone des Orts
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,cloud_cover&forecast_days=3&timezone=auto&timeformat=unixtime`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
     return {wx:{t0:new Date(j.hourly.time[0] * 1000), T:j.hourly.temperature_2m, C:j.hourly.cloud_cover}, tz:j.timezone};
 }
