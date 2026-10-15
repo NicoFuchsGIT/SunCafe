@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
         'User-Agent': 'SunCafe/1.0 (+https://suncafe-nu.vercel.app)'
       },
       body: 'data=' + encodeURIComponent(q),
-      signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(9000)])
+      signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(25000)])
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const text = await r.text();
