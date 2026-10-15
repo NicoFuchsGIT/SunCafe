@@ -2,30 +2,94 @@
 @font-face{font-family:"Bricolage Grotesque";font-style:normal;font-weight:400 800;font-stretch:100%;font-display:swap;
     src:url(../fonts/BricolageGrotesque-latin.woff2) format("woff2");
     unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
-:root{--bg:#f7f9fb;--ink:#14213d;--mute:#5d6b7e;--line:#dde3ea;--sun:#ffb703;--shade:#6c7a89;--card:#fff}
-html.dark{--bg:#10151f;--ink:#e8edf4;--mute:#97a3b4;--line:#27303d;--card:#18202c}
+/* ---------- Tokens ---------- */
+:root{--bg:#f7f9fb;--ink:#14213d;--mute:#5d6b7e;--line:#dde3ea;--sun:#ffb703;--shade:#6c7a89;--card:#fff;--track:#8793a3;
+    --side-w:360px;--dock-top:140px;--top-h:64px;--shadow:0 2px 12px rgba(20,33,61,.18)}
+html.dark{--bg:#10151f;--ink:#e8edf4;--mute:#97a3b4;--line:#27303d;--card:#18202c;--track:#6b7788;--shadow:0 2px 12px rgba(0,0,0,.5)}
 html.dark .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(.9)}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:"Bricolage Grotesque",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-#app{display:grid;grid-template-columns:360px 1fr;height:100%;height:100dvh} /* dvh: mobil nicht unter der Adressleiste */
-#side{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--bg)}
-#map{height:100%;width:100%}
-header{padding:14px 16px 10px;padding-top:max(14px,env(safe-area-inset-top))}
-h1{font-size:22px;font-weight:800;margin:0 0 2px}
-#wx{font-size:13px;color:var(--mute);min-height:18px}
-.row{display:flex;gap:8px;margin-top:10px}
-input[type=search]{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px}
-button{font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
-button:focus-visible,input:focus-visible,li:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
-#time{padding:4px 16px 8px}
-#tl{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:4px}
-#tl small{font-weight:400;color:var(--mute)}
-input[type=range]{width:100%;accent-color:var(--sun)}
-#filters{display:flex;gap:16px;padding:2px 16px 10px;font-size:14px;border-bottom:1px solid var(--line)}
-#filters label{display:flex;gap:6px;align-items:center;cursor:pointer}
-#status{padding:8px 16px;font-size:13px;color:var(--mute)}
+html,body{height:100%;margin:0;overflow:hidden;font-family:"Bricolage Grotesque",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+[hidden]{display:none!important}
+.hidden-ui{display:none!important}
+
+/* ---------- Grundelemente ---------- */
+button{font:inherit;font-size:14px;padding:9px 12px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,li:focus-visible,a:focus-visible,#side:focus-visible,#sheet:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+input[type=search]{flex:1;min-width:0;min-height:48px;padding:9px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:16px} /* 16 px: iOS zoomt sonst beim Fokus */
+select{width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+select.auto{width:auto}
+.icon{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 16px;font-weight:600;font-size:15px;box-shadow:var(--shadow);border:0}
+.btn .icon{width:20px;height:20px}
+.btn.primary{background:var(--sun);color:#14213d}
+.icon-btn{width:48px;height:48px;min-height:48px;padding:0;display:flex;align-items:center;justify-content:center;flex:none;border:0;border-radius:12px;box-shadow:var(--shadow);font-size:18px;font-weight:600}
+.icon-btn .icon{width:22px;height:22px}
+.icon-btn.small{width:44px;height:44px;min-height:44px;box-shadow:none;font-size:24px;font-weight:400}
+.pill{display:inline-block;padding:4px 10px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-size:13px;color:var(--mute)}
+.pill:empty{display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--bg);font-weight:600;white-space:nowrap}
+.chip .icon{width:18px;height:18px}
+.chip[aria-pressed=true]{background:var(--sun);border-color:var(--sun);color:#14213d}
+
+/* ---------- Gerüst: Karte im Vollbild, alles andere schwebt ---------- */
+#app{position:relative;height:100%;height:100dvh;overflow:hidden} /* dvh: mobil nicht unter der Adressleiste */
+#map{position:absolute;inset:0}
+
+/* Oben: Suche, Info, Standort, Wetter */
+#topbar{position:absolute;z-index:40;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;pointer-events:none}
+#topbar>*{pointer-events:auto}
+.tb-row{display:flex;gap:8px;width:100%}
+.notice{display:flex;align-items:center;gap:4px;max-width:100%;padding:8px 4px 8px 14px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);font-size:13px;line-height:1.35;border-left:4px solid var(--sun)}
+
+/* Unten: Zeit, Chips, Schieber, Knöpfe */
+#dock{position:absolute;z-index:40;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(20,33,61,.18)}
+#tl{display:flex;align-items:baseline;gap:8px;min-height:28px}
+#tlabel{font-size:18px;font-weight:700}
+#tl .pill{background:var(--sun);color:#14213d;box-shadow:none;font-weight:600;padding:2px 10px}
+#tl small{margin-left:auto;font-size:13px;color:var(--mute)}
+#chips{display:flex;gap:8px;margin:8px -16px 0;padding:0 16px;overflow-x:auto;scrollbar-width:none}
+#chips::-webkit-scrollbar{display:none}
+input[type=range]{-webkit-appearance:none;appearance:none;display:block;width:100%;height:44px;margin:4px 0;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:var(--track)}
+input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:var(--track)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;margin-top:-10px;border-radius:50%;background:var(--sun);border:3px solid #fff;box-shadow:0 0 0 1.5px #14213d,0 2px 6px rgba(0,0,0,.3)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--sun);border:3px solid #fff;box-shadow:0 0 0 1.5px #14213d,0 2px 6px rgba(0,0,0,.3)}
+#dock-btns{display:flex;gap:8px}
+#dock-btns .btn{flex:1;position:relative;box-shadow:none;border:1px solid var(--line)}
+.badge{display:inline-block;min-width:22px;padding:1px 6px;border-radius:999px;background:var(--sun);color:#14213d;font-size:12px;font-weight:700;text-align:center}
+
+/* Filter-Panel schwebt über dem Dock */
+#filters-panel{position:absolute;left:8px;right:8px;bottom:calc(100% + 8px);max-height:calc(100dvh - var(--dock-top) - var(--top-h) - 24px);overflow:auto;padding:8px 16px 16px;background:var(--card);border-radius:16px;box-shadow:var(--shadow)}
+.fp-head{display:flex;justify-content:space-between;align-items:center}
+.fp-head h2{margin:0;font-size:18px}
+.check{display:flex;gap:12px;align-items:center;min-height:44px;font-size:15px;cursor:pointer}
+.check input{width:22px;height:22px;accent-color:var(--sun)}
+.fp-label{display:block;margin:8px 0 4px;font-size:13px;font-weight:600;color:var(--mute)}
+#cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+
+/* Café-Sheet */
+#sheet{position:absolute;z-index:35;left:8px;right:8px;bottom:calc(var(--dock-top) + 8px);max-height:calc(100dvh - var(--dock-top) - var(--top-h) - 16px);overflow:auto;padding:16px;background:var(--card);border-radius:16px;box-shadow:var(--shadow);animation:rise .18s ease-out}
+@keyframes rise{from{transform:translateY(16px);opacity:0}}
+#sheet-x{position:absolute;top:6px;right:6px}
+#sheet h2{margin:0;padding-right:48px;font-size:19px;line-height:1.25}
+#sheet p{margin:4px 0 0;font-size:14px}
+.sheet-state{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px;font-weight:600}
+.sheet-state .icon{width:22px;height:22px}
+.sheet-state .st-sun,.sheet-state .st-partial{color:#b45309}
+.sheet-state .sm{margin-left:auto;font-weight:600}
+.btn-route{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;margin-top:12px;border-radius:12px;background:var(--sun);color:#14213d;font-weight:700;font-size:16px;text-decoration:none}
+.btn-route .icon{width:22px;height:22px}
+.route-alt{display:block;margin-top:8px;padding:10px 0;text-align:center;font-size:14px;color:var(--ink)}
+.fb-link{display:inline-block;margin-top:8px;padding:10px 0;font-size:13px;color:var(--mute)}
+
+/* Liste: Spalte links (Desktop) bzw. Vollbild-Overlay (mobil) */
+#side{position:absolute;z-index:30;top:0;bottom:0;left:0;width:var(--side-w);display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--bg)}
+#side header{padding:14px 16px 6px;padding-top:max(14px,env(safe-area-inset-top))}
+h1{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:800;margin:0 0 2px}
+h1 .logo{color:#f5a300;width:.95em;height:.95em}
+#status{padding:4px 0 0;font-size:13px;color:var(--mute);min-height:20px}
 ul{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
-li{display:flex;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid var(--line);cursor:pointer}
+li{display:flex;gap:10px;align-items:center;min-height:56px;padding:10px 16px;border-top:1px solid var(--line);cursor:pointer}
 li:hover{background:var(--card)}
 li.sel{background:var(--card);box-shadow:inset 4px 0 0 var(--sun)}
 .dot{width:14px;height:14px;border-radius:50%;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
@@ -36,156 +100,66 @@ li.closed{opacity:.5}
 .meta{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .sm{font-size:12.5px;font-weight:600;white-space:nowrap}.sm:empty{display:none}
 .dist{font-size:12.5px;color:var(--mute);white-space:nowrap}
-.maplibregl-popup-content{font-family:inherit;color:#14213d;padding:12px 14px;min-width:200px}
-.maplibregl-popup-content b{display:block;font-size:15px;padding-right:44px} /* Platz für Routen-Icon und × */
-.maplibregl-popup-content p{margin:4px 0 0;font-size:13px}
-.maplibregl-popup-close-button{font-size:22px;padding:2px 9px}
+
+@media(min-width:761px){
+    #map{left:var(--side-w)}
+    #topbar{left:calc(var(--side-w) + 12px);right:60px;max-width:520px}
+    #dock{left:calc(var(--side-w) + 12px);right:auto;bottom:12px;width:min(520px,calc(100vw - var(--side-w) - 72px));border-radius:20px;box-shadow:var(--shadow)}
+    #filters-panel{left:0;right:0}
+    #sheet{left:calc(var(--side-w) + 12px);right:auto;width:min(420px,calc(100vw - var(--side-w) - 72px))}
+    #toggle-sidebar{display:none}
+}
 @media(max-width:760px){
-    #app{grid-template-columns:1fr;grid-template-rows:46% 54%}
-    #map{grid-row:1}#side{grid-row:2;border-right:0;border-top:1px solid var(--line)}
-    header{padding-top:14px;padding-bottom:4px}.row{margin-top:6px} /* Header liegt mobil unten, kein Notch-Abstand */
-    /* Bedienelemente nehmen auf kleinen Handys fast die ganze untere Hälfte ein: dort scrollt der Bereich als Ganzes */
-    #side{overflow:auto}#list{flex:none;overflow:visible;padding-bottom:env(safe-area-inset-bottom)}
-    .map-overlay-btn{top:max(12px,env(safe-area-inset-top))}
-    .maplibregl-ctrl-top-right{top:env(safe-area-inset-top)}
+    #side{inset:0;width:auto;border-right:0;padding-top:var(--top-h);padding-bottom:var(--dock-top);visibility:hidden;opacity:0;transition:opacity .15s,visibility .15s}
+    #side header{padding-top:6px}
+    #app[data-view=list] #side{visibility:visible;opacity:1}
+    .maplibregl-ctrl-top-right{display:none} /* Zoom per Pinch, Pin-Knopf im Dialog „Wo bist du?“ */
+    .maplibregl-ctrl-bottom-right{bottom:var(--dock-top)}
 }
 
-/* Info-Dialog */
-h1 .info-btn{width:22px;height:22px;padding:0;margin-left:6px;border-radius:50%;font-size:13px;font-weight:600;font-style:normal;line-height:1;vertical-align:middle}
-dialog#info{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);overflow:auto}
-dialog#info::backdrop{background:rgba(10,15,25,.5)}
-.info-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:14px 20px 8px;background:var(--card)}
+/* Ort wählen: nur Karte, Pin und zwei Knöpfe */
+#app.picking #side,#app.picking #dock,#app.picking #sheet,#app.picking #topbar{display:none}
+#app.picking #map{left:0}
+#center-marker{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);font-size:42px;line-height:1;pointer-events:none;z-index:20;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}
+#center-marker .icon{fill:#e63946;stroke:#fff;stroke-width:1.5}
+#pick-bar{position:absolute;z-index:40;left:0;right:0;bottom:calc(32px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:12px}
+
+/* Dialoge: Info, Wo bist du? */
+dialog.modal{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);overflow:auto}
+dialog.modal::backdrop{background:rgba(10,15,25,.5)}
+.info-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:10px 12px 4px 20px;background:var(--card)}
 .info-head h2{margin:0;font-size:18px}
-.info-x{padding:2px 10px;font-size:20px;line-height:1.2}
+.info-x{min-width:44px;min-height:44px;padding:2px 10px;font-size:22px;line-height:1.2;border:0}
 .info-body{padding:0 20px 18px;font-size:14px;line-height:1.5}
 .info-body h3{margin:16px 0 4px;font-size:14px}
 .info-body p{margin:4px 0}
 .info-body a{color:var(--ink)}
+.info-body .row{display:flex;gap:8px;margin-top:12px}
+.where-actions{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.where-actions .btn{justify-content:flex-start;box-shadow:none;border:1px solid var(--line)}
 #info ul{display:block;flex:none;overflow:visible;margin:4px 0;padding:0 0 0 18px;list-style:disc}
-#info li{display:list-item;padding:2px 0;border:0;cursor:auto}
+#info li{display:list-item;min-height:0;padding:2px 0;border:0;cursor:auto}
 #info li:hover{background:none}
 #info .dot{display:inline-block;vertical-align:-2px;margin-right:8px}
 
-/* Neues Maps-Icon oben rechts im Popup */
-.gmaps-icon {
-    position: absolute;
-    top: 12px;
-    right: 36px; /* Platziert es links neben dem Schließen-X */
-    font-size: 16px;
-    text-decoration: none;
-    color: var(--mute);
-    transition: color 0.2s;
-}
-.gmaps-icon:hover {
-    color: var(--sun);
-}
-/* Dropdown menue */
-select {
-    width: 100%;
-    padding: 9px 11px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--card);
-    color: var(--ink);
-    font: inherit;
-    font-size: 14px;
-    cursor: pointer;
-}
-select:focus-visible {
-    outline: 2px solid var(--sun);
-    outline-offset: 2px;
-}
-
-/* Der neue Toggle-Button für die Liste */
-.map-overlay-btn {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 10;
-    background: var(--card);
-    color: var(--ink);
-    border: 0;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
-    font-family: inherit;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-html.dark .map-overlay-btn { box-shadow: 0 0 0 1px var(--line); }
-
-/* Wenn die Liste eingeklappt ist */
-#app.collapsed #side {
-    display: none;
-}
-#app.collapsed {
-    grid-template-columns: 1fr !important;
-}
-@media(max-width:760px){
-    #app.collapsed {
-        grid-template-rows: 1fr !important; /* Gibt der Karte den vollen Platz auf Mobile */
-    }
-}
-
-/* Hilfsklasse zum Ausblenden */
-.hidden-ui {
-    display: none !important;
-}
-
-/* Der schwebende Pin genau in der Mitte */
-#center-marker {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    /* Verschiebt den Pin so, dass die SPITZE genau in der Mitte ist */
-    transform: translate(-50%, -100%);
-    font-size: 42px;
-    line-height: 1;
-    pointer-events: none; /* Karte bleibt darunter wischbar! */
-    z-index: 20;
-    filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.3));
-    transition: transform 0.1s;
-}
-
-/* Der große Bestätigungs-Button unten in der Mitte */
-#confirm-place-btn {
-    top: auto;
-    bottom: calc(52px + env(safe-area-inset-bottom)); /* über der Attribution */
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--sun);
-    color: #14213d;
-    font-size: 16px;
-    padding: 12px 20px;
-    border-radius: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-@media (hover:hover) { /* auf Touch bleibt :hover sonst hängen */
-    #confirm-place-btn:hover { transform: translateX(-50%) scale(1.05); }
-}
-#ptype,#fsort{flex:1 1 200px;min-width:0}
-
-.icon{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em;flex:none}
-h1 .logo{color:#f5a300;width:.95em;height:.95em}
-#ts-icon{display:inline-block;transition:transform .2s}
-#center-marker .icon{fill:#e63946;stroke:#fff;stroke-width:1.5}
-.maplibregl-ctrl button .icon{width:18px;height:18px;margin:auto}
-.maplibregl-ctrl-group button{color:#14213d}
-.fb-link{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--mute)}
-
-.vote{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+/* Votes im Sheet */
+.vote{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 .vote[hidden]{display:none}
-.vote-q{font-size:12.5px;font-weight:600}
-.vote-row{display:flex;gap:6px;margin-top:6px}
-.vote-btn{flex:1;font:inherit;font-size:12.5px;padding:6px 4px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#14213d;cursor:pointer}
-.vote-btn .icon{width:16px;height:16px;margin-right:2px}
+.vote-q{font-size:13px;font-weight:600}
+.vote-row{display:flex;gap:8px;margin-top:8px}
+.vote-btn{flex:1;font:inherit;font-size:13px;padding:6px 4px;border:1px solid var(--line);border-radius:12px;background:#fff;color:#14213d;cursor:pointer}
+.vote-btn .icon{width:18px;height:18px;margin-right:2px}
 .vote-btn.v-sun .icon{color:#b45309}
 .vote-btn.v-shade .icon{color:#475569}
 .vote-btn:hover:not(:disabled){border-color:var(--sun)}
 .vote-btn:disabled{opacity:.6;cursor:default}
-.vote-site{display:block;margin-top:6px;font-size:12px;color:var(--mute)}
-.maplibregl-popup-content .vote-note{font-size:12.5px;color:var(--mute)}
+.vote-site{display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px;font-size:13px;color:var(--mute)}
+.vote-site input{width:20px;height:20px;accent-color:var(--sun)}
+#sheet .vote-note{font-size:13px;color:var(--mute)}
+
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* MapLibre-Steuerelemente (Desktop): eigene Knopfgröße behalten */
+.maplibregl-ctrl button{min-height:0;border-radius:0}
+.maplibregl-ctrl button .icon{width:18px;height:18px;margin:auto}
+.maplibregl-ctrl-group button{color:#14213d}

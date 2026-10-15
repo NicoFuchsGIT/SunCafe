@@ -53,7 +53,7 @@ Ziel: Das Layout ist noch unverändert, aber alles, worauf der Umbau aufbaut, st
 | D1.2 | Test: Beide Sprachen haben dieselben Schlüssel | 1 h |
 | D1.3 | Font als WOFF2 (lateinisches Subset, variabel) nach `fonts/`, `@font-face` mit `font-display: swap`, OFL-Lizenz ins Repo | 1 h |
 | D1.4 | MapLibre, SunCalc, opening_hours selbst hosten (feste Versionen, wie in `package.json`) | 2 h |
-| D1.5 | SVG-Icon-Satz (Sonne, Teils-Sonne, Schatten, Nacht, Café, Bar, Restaurant, Pin, Route, Filter, Liste, Standort) als Sprite, Emojis in UI und Dropdowns ersetzen (Stand: Vote-Knöpfe aus Phase 3.3 nutzen bereits `i-sun`, `i-partial`, `i-shade`; Rest offen) | 3 h |
+| D1.5 | SVG-Icon-Satz (Sonne, Teils-Sonne, Schatten, Nacht, Café, Bar, Restaurant, Pin, Route, Filter, Liste, Standort) als Sprite, Emojis in UI und Dropdowns ersetzen (Stand: Sprite komplett; im Einsatz sind Vote-Knöpfe, Pin, Route, Chevron und `i-list` am Listen-Knopf. `i-night`, `i-cafe`, `i-bar`, `i-restaurant`, `i-filter`, `i-locate` sind definiert und warten auf das neue Layout ab D2) | 3 h |
 | D1.6 | Attribution kurz am Kartenrand, Info-Dialog zweisprachig und gekürzt, Link „Ergebnis falsch?“ zum GitHub-Issue | 1,5 h |
 | D1.7 | Favicon, 404 und Open-Meteo-Anfrage prüfen | 0,5 h |
 
@@ -75,6 +75,17 @@ Ziel: Die App ist unterwegs einhändig bedienbar.
 | D2.6 | Marker mit Symbolen und dunklem Rand (Sonne, Teils, Schatten, Nacht, geschlossen), Kontrast mindestens 3:1 | 2 h |
 | D2.7 | Standortfluss: abgelehnt oder Zeitüberschreitung führt zur Frage „Wo bist du?“ mit Suchfeld, Hinweis außerhalb Wiens (E8) | 2 h |
 | D2.8 | Tap-Ziele mindestens 44 px, `--mute`-Kontrast prüfen, Fokus und Tastatur, `aria`-Beschriftung der neuen Elemente | 1 h |
+
+**Stand:** D2.1 bis D2.8 sind im Code umgesetzt und mit Playwright-Mobile-Emulation (iPhone 14, 390 × 844) und Desktop-Ansicht geprüft (`npm run test:e2e`). Entscheidungen dabei:
+- Standard-Sortierung ist „Meiste Sonne“ bis 800 m, weiter entfernte Orte folgen nach Entfernung.
+- Chip „Abend“ = eine Stunde vor Sonnenuntergang (entfällt danach), „Morgen früh“ = zwei Stunden nach Sonnenaufgang.
+- Mobil ist die Liste ein Vollbild-Overlay, am Desktop bleibt sie als Spalte links.
+- Standort wird sofort abgefragt; bei Ablehnung, Fehler oder erfolgloser Adresssuche öffnet sich „Wo bist du?“ (Adresse, erneut versuchen, auf der Karte wählen, Wien Zentrum). Es gibt keinen stillen Wien-Fallback mehr.
+- Zoom-Knöpfe und der Pin-Knopf der Karte gibt es nur am Desktop; mobil erreicht man „Auf der Karte wählen“ über den Dialog.
+- Route: Google Maps, auf Apple-Geräten Apple Karten mit Google Maps als zweiter Link.
+- Wetterzeile sitzt unter dem Suchfeld.
+
+**Noch offen:** Test auf einem echten iPhone und Android-Gerät. Im Dunkelmodus werden die Marker mit der Karte invertiert (gehört zu D3).
 
 **Fertig, wenn:** Auf einem Handy führen höchstens zwei Taps von der geöffneten App zur Route. Test mit Playwright-Mobile-Emulation und mindestens einem echten Gerät.
 
@@ -116,7 +127,7 @@ Voraussetzung: Logo liegt vor.
 
 | Punkt | Notiz |
 |-------|-------|
-| Standard-Sortierung | Sonne oder Entfernung? Empfehlung: Sonne zuerst, mit Gehminuten als Obergrenze. Entscheiden in D2.4. |
+| Standard-Sortierung | Entschieden: Sonne zuerst, Obergrenze 800 m (`SORT_SUN_MAX_M`). |
 | Weitere Filter | Terrasse, Hunde erlaubt, Barrierefreiheit, Steckdosen; hängt von OSM-Tags ab, Datenlage vorher prüfen |
 | Echtes Gerät | Mindestens ein iPhone und ein Android-Gerät für D2 und D4 |
 | Logo | Zeitplan offen, blockiert nur D4 |
