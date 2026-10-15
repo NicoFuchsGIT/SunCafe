@@ -27,23 +27,6 @@ map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right
 
 const icon = n => `<svg class="icon" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 
-// Neuer Knopf: Suchen an der aktuellen Kartenmitte
-class SearchCenterControl {
-    onAdd() {
-        this._container = document.createElement('div');
-        this._container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.title = t('pick.title'); this._btn = btn;
-        btn.innerHTML = icon('pin');
-        btn.onclick = () => setPicking(!isPicking());
-        this._container.appendChild(btn);
-        return this._container;
-    }
-    onRemove() { this._container.remove(); }
-}
-const searchCtl = new SearchCenterControl(), searchBtn = searchCtl._btn;
-map.addControl(searchCtl, 'top-right');
 
 // Marker tragen die Information im Symbol, nicht nur in der Farbe (E12): Sonne, Teils, Schatten, Nacht, offen/unberechnet, geschlossen
 const MARKS = {
@@ -445,7 +428,7 @@ $('chips').addEventListener('click', e => {
 // ---------- Sprache ----------
 applyStatic();
 const langSel = $('lang'); langSel.value = getLang();
-langSel.onchange = () => { setLang(langSel.value); searchBtn.title = t('pick.title'); setView(view()); updateFilterBadge(); if (t0) update(); };
+langSel.onchange = () => { setLang(langSel.value); setView(view()); updateFilterBadge(); if (t0) update(); };
 
 // ---------- Info-Dialog ----------
 const info = $('info');
@@ -530,6 +513,7 @@ function setPicking(on) {
     if (on) { closeSheet(true); closeFilters(); }
     setTimeout(() => map.resize(), 50);
 }
+$('pick-btn').onclick = () => setPicking(true);
 $('pick-cancel').onclick = () => setPicking(false);
 $('confirm-place-btn').onclick = () => {
     const c = map.getCenter();
