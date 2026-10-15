@@ -1,8 +1,0 @@
-{
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "suncafe",
-  "compatibility_date": "2026-10-12",
-  "observability": { "enabled": true },
-  // Nur die statische Seite: /api (Votes, Overpass-Proxy) läuft ausschließlich auf Vercel, die Karte fällt ohne Proxy auf direkte Overpass-Abfragen zurück
-  "assets": { "directory": ".", "not_found_handling": "404-page" }
-}
