@@ -202,6 +202,10 @@ function voteBox(c) {
     return box;
 }
 const APPLE = isApple(navigator.userAgent, navigator.platform, navigator.maxTouchPoints);
+function mapsPref(set) { // zuletzt benutzte Karten-App auf Apple-Geräten
+    try { if (set) localStorage.setItem('suncafe.maps', set); else return localStorage.getItem('suncafe.maps'); } catch(e) {}
+    return null;
+}
 function openSheet(id) {
     const c = cafes.find(x => x.id === id); if (!c) return;
     const out = t(c.outdoor === 'yes' ? 'out.yes' : c.outdoor === 'no' ? 'out.no' : 'out.unknown');
@@ -221,12 +225,21 @@ function openSheet(id) {
     [...sides, c.info.text, out, c.addr].filter(Boolean).forEach(txt => {
         const p = document.createElement('p'); p.textContent = txt; el.appendChild(p); });
 
-    // Route zu Fuß mit Koordinaten (E5); auf Apple-Geräten Apple Karten zuerst, Google Maps als zweite Wahl
+    // Route zu Fuß mit Koordinaten (E5). Ob Google Maps installiert ist, weiß eine Webseite nicht: Google Maps ist die Hauptwahl,
+    // auf Apple-Geräten gibt es Apple Karten als zweiten Link, und die zuletzt benutzte App wird zur Hauptwahl
+    const apple = APPLE && mapsPref() === 'apple';
     const route = document.createElement('a'); route.className = 'btn-route'; route.target = '_blank'; route.rel = 'noopener';
-    route.href = APPLE ? appleUrl(c.lat, c.lng) : googleUrl(c.lat, c.lng);
+    route.href = apple ? appleUrl(c.lat, c.lng) : googleUrl(c.lat, c.lng);
     route.innerHTML = icon('route') + ' <span></span>'; route.lastChild.textContent = t('sheet.route');
+    route.onclick = () => mapsPref(apple ? 'apple' : 'google');
     el.appendChild(route);
-    if (APPLE) { const alt = document.createElement('a'); alt.className = 'route-alt'; alt.target = '_blank'; alt.rel = 'noopener'; alt.href = googleUrl(c.lat, c.lng); alt.textContent = t('sheet.routeGoogle'); el.appendChild(alt); }
+    if (APPLE) {
+        const alt = document.createElement('a'); alt.className = 'route-alt'; alt.target = '_blank'; alt.rel = 'noopener';
+        alt.href = apple ? googleUrl(c.lat, c.lng) : appleUrl(c.lat, c.lng);
+        alt.textContent = t(apple ? 'sheet.routeGoogle' : 'sheet.routeApple');
+        alt.onclick = () => mapsPref(apple ? 'google' : 'apple');
+        el.appendChild(alt);
+    }
 
     el.appendChild(voteBox(c));
 

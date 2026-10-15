@@ -52,9 +52,9 @@ before(async () => {
 after(async () => { await browser?.close(); server?.close(); });
 
 // Seite öffnen zu einer festen Uhrzeit (UTC); vote: Antwort der Vote-API
-async function open(time, vote, {mobile = false, geo = 'ok', size = [390, 844], safe = null} = {}) {
+async function open(time, vote, {mobile = false, geo = 'ok', size = [390, 844], safe = null, ua = null} = {}) {
     // Standard iPhone 14: 390 × 844, Touch; safe = {top, bottom} ersetzt env(safe-area-inset-*) (Chromium kennt keine Notch)
-    const ctx = await browser.newContext({locale: 'de-AT', timezoneId: 'Europe/Vienna',
+    const ctx = await browser.newContext({locale: 'de-AT', timezoneId: 'Europe/Vienna', ...(ua ? {userAgent: ua} : {}),
         ...(mobile ? {viewport: {width: size[0], height: size[1]}, hasTouch: true, isMobile: true, deviceScaleFactor: 3} : {})});
     const page = await ctx.newPage();
     await page.addInitScript(g => { window.__geo = g; }, geo);
@@ -233,5 +233,25 @@ test('iPhone 17 (402 × 874, Dynamic Island): Info-Dialog mit „×“ liegt inn
     await page.locator('#info .info-x').click();
     assert.equal(await page.locator('#info[open]').count(), 0);
     // „Wo bist du?“ folgt derselben Regel
+    await ctx.close();
+});
+
+test('iPhone: Google Maps ist die Hauptwahl, Apple Karten der zweite Link, die letzte Wahl wird gemerkt', {skip}, async () => {
+    const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true, ua});
+    await openFirst(page);
+    assert.match(await page.locator('#sheet .btn-route').getAttribute('href'), /google\.com\/maps\/dir/);
+    assert.match(await page.locator('#sheet .route-alt').getAttribute('href'), /maps\.apple\.com/);
+    await page.evaluate(() => { document.querySelector('#sheet .route-alt').target = '_self'; document.querySelector('#sheet .route-alt').removeAttribute('href'); document.querySelector('#sheet .route-alt').click(); });
+    await page.keyboard.press('Escape'); await page.locator('#toggle-sidebar').click(); await page.locator('#list li').first().click();
+    await page.waitForSelector('#sheet:not([hidden])');
+    assert.match(await page.locator('#sheet .btn-route').getAttribute('href'), /maps\.apple\.com/, 'Apple Karten ist jetzt die Hauptwahl');
+    await ctx.close();
+});
+
+test('Android und Desktop: nur ein Routenlink (Google Maps)', {skip}, async () => {
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}));
+    await openFirst(page);
+    assert.equal(await page.locator('#sheet .route-alt').count(), 0);
     await ctx.close();
 });
