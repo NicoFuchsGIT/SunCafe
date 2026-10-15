@@ -11,5 +11,9 @@
 | `beobachtung` | `sonne`, `teils` oder `schatten` |
 | `foto` | Dateiname unter `validation/fotos/` (optional) |
 | `notiz` | z. B. Wolken, Schirme, Bäume |
+| `vorhersage` | `sonne`, `teils` oder `schatten`, vom Modell für denselben Ort und Zeitpunkt |
+| `sonnenhoehe` | Sonnenhöhe in Grad zu diesem Zeitpunkt |
+| `hoehenquelle` | `wien`, `osm` oder `default` (Quelle der Gebäudehöhen) |
 
-Pro Café mindestens zwei Zeitpunkte (z. B. Vormittag und Nachmittag); über das Jahr verteilt. Auswertung folgt in 4.2.
+Pro Café mindestens zwei Zeitpunkte (z. B. Vormittag und Nachmittag); über das Jahr verteilt. 
+Auswertung: `python3 validation/auswertung.py` (Trefferquote, Konfusionsmatrix, Fehler nach Sonnenhöhe, Tageszeit und Höhenquelle; Zeilen ohne `vorhersage` werden übersprungen). Test: `pipx run pytest validation`.

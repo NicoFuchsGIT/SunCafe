@@ -30,4 +30,4 @@ jobs:
         run: npm test
 
       - name: Pipeline-Tests (pytest, inkl. gemeinsame Fixtures mit JS)
-        run: pipx run pytest pipeline
+        run: pipx run pytest pipeline validation
