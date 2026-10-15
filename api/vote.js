@@ -21,6 +21,19 @@ function parse(b) {
     predicted: b.predicted, sunAlt: +b.sunAlt.toFixed(1), sunAz: +b.sunAz.toFixed(1), modelVersion: b.modelVersion, onSite: b.onSite === true};
 }
 
+// Aufbewahrung: Votes älter als 6 Monate werden gelöscht (Datenschutzerklärung Abschnitt 9). Die Liste ist zeitlich geordnet,
+// also genügt es, vorne abzutragen, bis der älteste Eintrag jung genug ist. Läuft bei jedem neuen Vote, höchstens 50 Einträge je Aufruf.
+const RETENTION_MS = 183 * 24 * 3600 * 1000;
+async function purgeOld(now = Date.now()) {
+  for (let i = 0; i < 50; i++) {
+    const [head] = (await storage.range('votes', 0, 0)) || [];
+    if (typeof head !== 'string') return;
+    let t = NaN; try { t = Date.parse(JSON.parse(head).t); } catch (e) { /* defekt: wegwerfen */ }
+    if (t >= now - RETENTION_MS) return;
+    await storage.shift('votes');
+  }
+}
+
 const tooMany = (res, seconds) => { res.setHeader('Retry-After', String(seconds)); return res.status(429).json({error: 'rate limited'}); };
 
 module.exports = async (req, res) => {
@@ -41,8 +54,10 @@ module.exports = async (req, res) => {
     if (await storage.incrWithTtl('rl:dev:' + dev, LIMITS.hourSeconds) > LIMITS.perDevice) return tooMany(res, LIMITS.hourSeconds);
     if (!await storage.set(`rl:place:${dev}:${vote.placeId}`, 1, {ttl: LIMITS.placeSeconds, nx: true})) return tooMany(res, LIMITS.placeSeconds);
     await storage.push('votes', JSON.stringify({...vote, dev}));
+    await purgeOld().catch(() => {}); // Aufräumen darf den Vote nicht scheitern lassen
     return res.status(204).end();
   } catch (e) {
     return res.status(503).json({error: 'votes unavailable'});
   }
 };
+module.exports.purgeOld = purgeOld;

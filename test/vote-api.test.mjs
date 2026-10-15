@@ -119,3 +119,17 @@ test('fremde Origin wird abgelehnt, gleiche oder fehlende Origin angenommen', as
     assert.equal((await withHeaders({origin: 'https://suncafe.test'})).code, 204);
     assert.equal((await withHeaders({})).code, 204);
 });
+
+test('Aufbewahrung: Votes älter als 6 Monate werden beim nächsten Vote gelöscht, jüngere bleiben', async t => {
+    const day = 24 * 3600 * 1000, now = Date.now();
+    const list = [180, 100, 2].map(d => JSON.stringify({t: new Date(now - (d + 5) * day).toISOString(), vote: 'sun'})); // 185, 105, 7 Tage alt → nur der erste ist zu alt
+    list.unshift(JSON.stringify({t: new Date(now - 200 * day).toISOString()}), 'kaputt');
+    t.mock.method(globalThis, 'fetch', async (url, init) => {
+        const run = ([cmd, , v, a]) => cmd === 'LRANGE' ? {result: list.slice(+v, +a + 1)} : cmd === 'LPOP' ? {result: list.shift()} : cmd === 'RPUSH' ? (list.push(v), {result: list.length}) : {result: cmd === 'INCR' ? 1 : 'OK'};
+        const body = JSON.parse(init.body);
+        return {ok: true, json: async () => url.endsWith('/pipeline') ? body.map(run) : run(body)};
+    });
+    assert.equal((await call(good())).code, 204);
+    assert.equal(list.length, 3, '200 d, defekter Eintrag und 185 d entfernt; 105 d, 7 d und der neue Vote bleiben');
+    assert.ok(list.every(x => !x.includes('kaputt')));
+});

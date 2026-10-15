@@ -61,5 +61,6 @@ module.exports = {
   del: key => command('DEL', key),
   incrWithTtl,
   push: (key, item) => command('RPUSH', key, item),
+  shift: key => command('LPOP', key),
   range: (key, start = 0, stop = -1) => command('LRANGE', key, start, stop)
 };
