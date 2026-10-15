@@ -51,3 +51,15 @@ test('Ein aus Overpass geparstes Café ergibt einen gültigen Vote (OSM-Typ im p
     const v = buildVote(c, {alt: 0.5, az: 3, device: 'dev-12345678'});
     assert.equal(v.placeId, 'way/77');
 });
+
+test('buildVote mit device: "" legt keine Geräte-ID an (Datensparsamkeit: erst beim Senden)', () => {
+    const calls = [];
+    const store = {getItem: k => { calls.push(['get', k]); return null; }, setItem: (k, v) => { calls.push(['set', k, v]); }};
+    Object.defineProperty(globalThis, 'localStorage', {value: store, configurable: true});
+    try {
+        assert.ok(buildVote(cafe(), {alt: 0.5, az: 1, device: ''}));
+        assert.deepEqual(calls, []);
+        buildVote(cafe(), {alt: 0.5, az: 1}); // ohne device: ID wird jetzt angelegt
+        assert.ok(calls.some(c => c[0] === 'set' && c[1] === 'suncafe.device'));
+    } finally { delete globalThis.localStorage; }
+});

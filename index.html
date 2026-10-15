@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<noscript><p style="margin:0;padding:16px;font:16px/1.5 system-ui,sans-serif">SunCafe braucht JavaScript, um Karte und Sonnenstand zu berechnen. / SunCafe needs JavaScript to draw the map and calculate the sun position. <a href="impressum.html">Impressum</a> · <a href="datenschutz.html">Datenschutz</a></p></noscript>
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
   <symbol id="i-partial" viewBox="0 0 24 24"><path d="M12 2v2M4.9 4.9l1.4 1.4M2 11h2M19.1 4.9l-1.4 1.4M22 11h-2"/><path d="M8 11a4 4 0 0 1 8 0"/><path d="M7 21a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 14.5h.5a3.25 3.25 0 0 1 0 6.5z"/></symbol>
@@ -27,7 +28,7 @@
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r=".6"/><circle cx="4.5" cy="12" r=".6"/><circle cx="4.5" cy="18" r=".6"/></symbol>
   <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></symbol>
 </svg>
-<div id="app" data-view="map">
+<main id="app" data-view="map">
     <div id="map"></div>
 
     <div id="topbar">
@@ -44,13 +45,19 @@
         </div>
     </div>
 
-    <aside id="side" tabindex="-1">
+    <section id="side" tabindex="-1" aria-labelledby="app-title">
         <header>
-            <h1><svg class="icon logo" aria-hidden="true"><use href="#i-sun"/></svg> SunCafe</h1>
+            <h1 id="app-title"><svg class="icon logo" aria-hidden="true"><use href="#i-sun"/></svg> SunCafe</h1>
             <div id="status" data-i18n="status.hint"></div>
         </header>
         <ul id="list"></ul>
-    </aside>
+        <nav class="legal-links" data-i18n-attr="aria-label:legal.nav">
+            <a href="impressum.html" data-i18n="legal.imprint"></a>
+            <a href="datenschutz.html" data-i18n="legal.privacy"></a>
+            <a href="cookies.html" data-i18n="legal.cookies"></a>
+            <a href="nutzungsbedingungen.html" data-i18n="legal.terms"></a>
+        </nav>
+    </section>
 
     <section id="sheet" role="dialog" aria-labelledby="sheet-name" tabindex="-1" hidden>
         <button id="sheet-x" class="icon-btn small" data-i18n-attr="aria-label:sheet.close">×</button>
@@ -94,12 +101,13 @@
         <button id="pick-cancel" class="btn" data-i18n="pick.cancel"></button>
         <button id="confirm-place-btn" class="btn primary" data-i18n="pick.confirm"></button>
     </div>
-</div>
+</main>
 
 <dialog id="where" class="modal" aria-labelledby="where-title">
     <div class="info-head"><h2 id="where-title" data-i18n="where.title"></h2><button class="info-x" data-i18n-attr="aria-label:info.close">×</button></div>
     <div class="info-body">
         <p id="where-msg"></p>
+        <p class="fp-note" data-i18n="where.hint"></p>
         <div class="row">
             <input id="where-q" type="search" enterkeyhint="search" data-i18n-attr="placeholder:search.ph;aria-label:search.label">
             <button id="where-go" class="btn" data-i18n="where.search"></button>
@@ -151,6 +159,14 @@
         <h3 data-i18n="info.h.code"></h3>
         <p data-i18n-html="info.code"></p>
         <p>Instagram: <a href="https://www.instagram.com/_nicofuchs_/" target="_blank" rel="noopener">https://www.instagram.com/_nicofuchs_/</a></p>
+
+        <h3 data-i18n="legal.nav"></h3>
+        <p class="legal-row">
+            <a href="impressum.html" data-i18n="legal.imprint"></a>
+            <a href="datenschutz.html" data-i18n="legal.privacy"></a>
+            <a href="cookies.html" data-i18n="legal.cookies"></a>
+            <a href="nutzungsbedingungen.html" data-i18n="legal.terms"></a>
+        </p>
     </div>
 </dialog>
 

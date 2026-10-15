@@ -118,15 +118,15 @@ async function nomSlot() { const w = lastNom + 1100 - Date.now(); if (w > 0) awa
 export async function region(lat, lng) {
     if (inWien(lat, lng)) return {country_code:'at', state:'Wien'};
     const key = 'rg:' + lat.toFixed(1) + ',' + lng.toFixed(1);
-    try { const c = JSON.parse(localStorage.getItem(key)); if (c) return c; } catch(x) {}
+    try { const c = JSON.parse(sessionStorage.getItem(key)); if (c) return c; } catch(x) {}
     try {
         await nomSlot();
         // Bundesländer auf Deutsch, so heißen sie in den Feiertagsdaten von opening_hours (z. B. „Bayern“)
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=5&accept-language=de&lat=${lat}&lon=${lng}`);
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=5&accept-language=de&lat=${lat.toFixed(2)}&lon=${lng.toFixed(2)}`); // gerundet (~1 km): für Land und Bundesland genügt das
         const a = (await r.json()).address;
         if (a && a.country_code) {
             const rg = {country_code:a.country_code, state:a.state};
-            try { localStorage.setItem(key, JSON.stringify(rg)); } catch(x) {}
+            try { sessionStorage.setItem(key, JSON.stringify(rg)); } catch(x) {}
             return rg;
         }
     } catch(x) {}
@@ -137,14 +137,14 @@ export async function region(lat, lng) {
 export async function geocode(q) {
     const key = 'nom:' + q.toLowerCase();
     let hit = null;
-    try { hit = JSON.parse(localStorage.getItem(key)); } catch(x) {}
+    try { hit = JSON.parse(sessionStorage.getItem(key)); } catch(x) {}
     if (hit) return hit;
     await nomSlot();
     try {
         const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&accept-language=de&q=' + encodeURIComponent(q));
         const j = await r.json(); const a = j[0] && j[0].address;
         if (j[0]) { hit = {lat:+j[0].lat, lng:+j[0].lon, rg:a && a.country_code ? {country_code:a.country_code, state:a.state} : null};
-            try { localStorage.setItem(key, JSON.stringify(hit)); } catch(x) {} }
+            try { sessionStorage.setItem(key, JSON.stringify(hit)); } catch(x) {} }
     } catch(x) {}
     return hit;
 }
@@ -153,7 +153,8 @@ export async function geocode(q) {
 // {wx, tz}; wirft bei Fehlern
 export async function fetchWeather(lat, lng) {
     // unixtime: Zeitpunkte unabhängig von der Browser-Zeitzone; timezone=auto liefert die Zeitzone des Orts
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,cloud_cover&forecast_days=3&timezone=auto&timeformat=unixtime`);
+    // Koordinaten auf 2 Stellen (~1 km) gerundet: das Wettermodell ist ohnehin gröber, und es geht nicht mehr Standort raus als nötig
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&hourly=temperature_2m,cloud_cover&forecast_days=3&timezone=auto&timeformat=unixtime`);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
     return {wx:{t0:new Date(j.hourly.time[0] * 1000), T:j.hourly.temperature_2m, C:j.hourly.cloud_cover}, tz:j.timezone};

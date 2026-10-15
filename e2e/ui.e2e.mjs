@@ -310,3 +310,27 @@ test('Info-Dialog: das „×“ hat keinen dauerhaften Fokusrahmen', {skip}, asy
     assert.equal(await page.locator('#info .info-x').evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
     await ctx.close();
 });
+
+test('Datenschutz: keine Cookies, keine Geräte-ID vor dem Senden, Rechtsseiten erreichbar', {skip}, async () => {
+    const {page, sent, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}));
+    const state = () => page.evaluate(() => ({cookie: document.cookie, local: Object.keys(localStorage).sort()}));
+    assert.deepEqual(await state(), {cookie: '', local: []}, 'nach dem Start');
+    await openFirst(page);
+    assert.deepEqual(await state(), {cookie: '', local: []}, 'Sheet geöffnet: noch keine Geräte-ID');
+    // Hinweis vor dem Absenden, mit Link zur Datenschutzerklärung
+    assert.match(await page.locator('#sheet .vote-privacy').innerText(), /Gespeichert werden .*kein Standort/s);
+    assert.equal(await page.locator('#sheet .vote-privacy a').getAttribute('href'), 'datenschutz.html#rueckmeldungen');
+    assert.equal(await page.locator('#sheet [role=group]').getAttribute('aria-labelledby'), 'vote-q');
+    await page.locator('#sheet .vote-btn.v-sun').click();
+    await page.waitForSelector('#sheet .vote-note:has-text("Danke")');
+    assert.equal(sent.length, 1);
+    assert.deepEqual(await state(), {cookie: '', local: ['suncafe.device', 'suncafe.voted']}, 'erst nach dem Senden');
+    // Rechtsseiten: im Info-Dialog verlinkt und erreichbar
+    await page.locator('#sheet-x').click();
+    await page.locator('#info-btn').click();
+    for (const href of ['impressum.html', 'datenschutz.html', 'cookies.html', 'nutzungsbedingungen.html']) {
+        const r = await page.request.get(base + '/' + await page.locator(`#info a[href="${href}"]`).getAttribute('href'));
+        assert.equal(r.status(), 200, href);
+    }
+    await ctx.close();
+});

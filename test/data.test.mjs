@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import OpeningHours from 'opening_hours';
 globalThis.opening_hours = OpeningHours;
-const {parseCafes, fetchCafes, geocode, fetchWeather, inWien} = await import('../js/data.js');
+const {parseCafes, fetchCafes, geocode, fetchWeather, region, inWien} = await import('../js/data.js');
 
 const node = (id, tags, lat = 48.2082, lon = 16.3738) => ({type: 'node', id, lat, lon, tags});
 
@@ -116,4 +116,14 @@ test('fetchWeather: liefert Reihen und Zeitzone, wirft bei HTTP-Fehler', async t
     assert.equal(w.tz, 'Europe/Vienna'); assert.deepEqual(w.wx.T, [12]); assert.equal(w.wx.t0.getTime(), 1760000000000);
     t.mock.method(globalThis, 'fetch', async () => resp(false, {reason: 'limit'}, 429));
     await assert.rejects(fetchWeather(48.2, 16.37), /HTTP 429/);
+});
+
+test('Datensparsamkeit: Wetter und Bundesland gehen nur mit auf ~1 km gerundeten Koordinaten raus', async t => {
+    const urls = [];
+    t.mock.method(globalThis, 'fetch', async u => { urls.push(String(u)); return u.includes('open-meteo') ? resp(true, {timezone: 'Europe/Berlin', hourly: {time: [1], temperature_2m: [1], cloud_cover: [1]}}) : resp(true, {address: {country_code: 'de', state: 'Berlin'}}); });
+    await fetchWeather(52.520008, 13.404954);
+    await region(52.520008, 13.404954); // außerhalb von Wien: fragt Nominatim
+    assert.match(urls[0], /latitude=52\.52&longitude=13\.40&/);
+    assert.match(urls[1], /lat=52\.52&lon=13\.40$/);
+    for (const u of urls) assert.ok(!/\d\.\d{3,}/.test(new URL(u).search.replace(/[?&]\w+=-?\d+\.\d{1,2}(?=&|$)/g, '')), 'zu genaue Koordinate: ' + u);
 });
