@@ -13,7 +13,8 @@ const call = async query => {
 test('Proxy lehnt fremde Abfragen und ungültige Parameter ab', async t => {
     t.mock.method(globalThis, 'fetch', async () => assert.fail('Overpass darf nicht gefragt werden'));
     for (const q of [{data: '[out:json];node(1);out;'}, {lat: 'x', lng: '16.37', ptype: 'cafe'}, {lat: '91', lng: '16.37', ptype: 'cafe'},
-        {lat: '48.2', lng: '181', ptype: 'cafe'}, {lat: '48.2', lng: '16.37', ptype: 'node(1)'}, {lat: '48.2', lng: '', ptype: 'cafe'}])
+        {lat: '48.2', lng: '181', ptype: 'cafe'}, {lat: '48.2', lng: '16.37', ptype: 'node(1)'}, {lat: '48.2', lng: '', ptype: 'cafe'},
+        {lat: '48.2', lng: '16.37', ptype: ','}, {lat: '48.2', lng: '16.37', ptype: 'cafe,bar;x'}, {lat: '48.2', lng: '16.37', ptype: 'cafe,pizza'}, {lat: '48.2', lng: '16.37'}])
         assert.equal((await call(q)).code, 400, JSON.stringify(q));
 });
 
@@ -28,6 +29,16 @@ test('Proxy baut die Café-Abfrage selbst, gerundet auf 3 Stellen', async t => {
     assert.match(body, /around:1000,48\.208,16\.374\)/);
     assert.match(body, /"amenity"="pub"/);
     assert.doesNotMatch(body, /"amenity"="restaurant"/);
+    assert.doesNotMatch(body, /"amenity"="cafe"/, 'nur Bars: keine Cafés in der Abfrage');
+});
+
+test('Proxy: mehrere Arten ergeben eine gemeinsame Abfrage', async t => {
+    let body;
+    t.mock.method(globalThis, 'fetch', async (url, init) => { body = decodeURIComponent(init.body.slice(5)); return {ok: true, text: async () => '{"elements":[]}'}; });
+    assert.equal((await call({lat: '48.2', lng: '16.37', ptype: 'bar,rest'})).code, 200);
+    assert.match(body, /"amenity"="pub"/);
+    assert.match(body, /"amenity"="restaurant"/);
+    assert.doesNotMatch(body, /"shop"="bakery"/);
 });
 
 test('Proxy cached keine Überlast-Antworten (remark, kaputtes JSON) und fragt den nächsten Server', async t => {

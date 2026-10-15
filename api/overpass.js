@@ -6,14 +6,14 @@ const SERVERS = [
   'https://overpass.openstreetmap.fr/api/interpreter'
 ];
 
-const PTYPES = ['cafe', 'bar', 'rest'];
+const PTYPES = ['cafe', 'bar', 'rest']; // ptype ist eine kommagetrennte Liste daraus
 
 // Nimmt nur Ort und Kategorie an und baut die Abfrage selbst, sonst wäre das ein offener Overpass-Proxy
 module.exports = async (req, res) => {
   const {lat, lng, ptype} = req.query;
   // Auf 3 Stellen gerundet wie der Client: gleiche Orte treffen denselben Cache-Eintrag
   const la = Math.round(parseFloat(lat) * 1000) / 1000, ln = Math.round(parseFloat(lng) * 1000) / 1000; // parseFloat: leer → NaN
-  if (!(Math.abs(la) <= 90) || !(Math.abs(ln) <= 180) || !PTYPES.includes(ptype)) {
+  if (!(Math.abs(la) <= 90) || !(Math.abs(ln) <= 180) || !/^[a-z,]{1,20}$/.test(ptype || '') || ptype.split(',').some(k => !PTYPES.includes(k))) {
     return res.status(400).json({error: 'bad request'});
   }
   const {cafeQuery} = await import('../js/data.js');

@@ -42,7 +42,12 @@ async function overpass(q, proxy, key, ms, onStatus) { // proxy: Pfad der Vercel
 }
 
 let wienCache = null;
-// ptype: 'cafe' | 'bar' | 'rest'
+// Lokalarten, einzeln wählbar: cafe = Café und Bäckerei, bar = Bar und Pub, rest = Restaurant
+export const KINDS = ['cafe', 'bar', 'rest'];
+// ptype: Liste der Arten, kommagetrennt in fester Reihenfolge, z. B. 'cafe' oder 'bar,rest'; ungültige Teile werden verworfen
+export const kindsOf = ptype => new Set(String(ptype).split(',').filter(k => KINDS.includes(k)));
+export const ptypeOf = kinds => KINDS.filter(k => kinds.has(k)).join(',');
+export const kindOf = tags => tags.amenity === 'cafe' || tags.shop === 'bakery' ? 'cafe' : tags.amenity === 'bar' || tags.amenity === 'pub' ? 'bar' : tags.amenity === 'restaurant' ? 'rest' : null;
 export async function fetchCafes(lat, lng, ptype = 'cafe', onStatus = () => {}) {
 
     // 1. Versuch: Der Wien-Turbo
@@ -78,9 +83,11 @@ export async function fetchCafes(lat, lng, ptype = 'cafe', onStatus = () => {}) 
 // Overpass-Abfrage für Orte um (lat, lng); auch api/overpass.js baut sie hiermit, damit der Proxy keine fremden Abfragen annimmt
 export function cafeQuery(lat, lng, ptype = 'cafe') {
     const a = `(around:${CAFE_RADIUS},${lat},${lng});`;
-    let q = `nwr["amenity"="cafe"]${a}nwr["shop"="bakery"]${a}`;
-    if (ptype === 'bar' || ptype === 'rest') q += `nwr["amenity"="bar"]${a}nwr["amenity"="pub"]${a}`;
-    if (ptype === 'rest') q += `nwr["amenity"="restaurant"]${a}`;
+    const k = kindsOf(ptype);
+    let q = '';
+    if (k.has('cafe')) q += `nwr["amenity"="cafe"]${a}nwr["shop"="bakery"]${a}`;
+    if (k.has('bar')) q += `nwr["amenity"="bar"]${a}nwr["amenity"="pub"]${a}`;
+    if (k.has('rest')) q += `nwr["amenity"="restaurant"]${a}`;
     q += `nwr["leisure"="outdoor_seating"]${a}`;
     return `[out:json][timeout:25];(${q});out body center;`;
 }
@@ -179,18 +186,15 @@ export function parseCafes(data, lat0, lng0, rg, ptype = 'cafe') {
     const kx = kxAt(lat0), ky = M_PER_DEG;
     const terr = data.elements.filter(e => e.tags && (e.tags.leisure === 'outdoor_seating' || e.tags.amenity === 'biergarten'))
         .map(e => ({lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon})).filter(t => t.lat != null);
+    const want = kindsOf(ptype);
     const list = data.elements.filter(e => {
         if (!e.tags) return false;
-        const am = e.tags.amenity, sh = e.tags.shop;
-        let ok = (am === 'cafe' || sh === 'bakery');
-        if (ptype === 'bar' || ptype === 'rest') ok = ok || am === 'bar' || am === 'pub';
-        if (ptype === 'rest') ok = ok || am === 'restaurant';
-        return ok && !BAD_CHAIN_RE.test(e.tags.name || '');
+        return want.has(kindOf(e.tags)) && !BAD_CHAIN_RE.test(e.tags.name || '');
     }).map(e => {
         const lat = e.lat ?? e.center?.lat, lng = e.lon ?? e.center?.lon;
         if (lat == null) return null;
         const raw = e.tags.opening_hours;
-        return {id:String(e.id), osmId:e.type + '/' + e.id, name:e.tags.name || '', lat, lng, loc:[], calc:false, terr:[], oh:parseHours(raw, lat, lng, rg), raw,
+        return {id:String(e.id), osmId:e.type + '/' + e.id, kind:kindOf(e.tags), name:e.tags.name || '', lat, lng, loc:[], calc:false, terr:[], oh:parseHours(raw, lat, lng, rg), raw,
             dist:Math.hypot((lng - lng0) * kx, (lat - lat0) * ky), outdoor:e.tags.outdoor_seating,
             addr:[e.tags['addr:street'], e.tags['addr:housenumber']].filter(Boolean).join(' ')};
     }).filter(Boolean);

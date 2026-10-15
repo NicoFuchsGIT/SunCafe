@@ -20,8 +20,13 @@ test('parseCafes: Kategorien, Kettenfilter und Felder', () => {
     ]};
     const ids = p => parseCafes(data, 48.2082, 16.3738, {country_code: 'at', state: 'Wien'}, p).map(c => c.id);
     assert.deepEqual(ids('cafe'), ['1', '2', '6', '8']);
-    assert.deepEqual(ids('bar'), ['1', '2', '3', '6', '8']);
-    assert.deepEqual(ids('rest'), ['1', '2', '3', '4', '6', '8']);
+    assert.deepEqual(ids('bar'), ['3'], 'nur Bars, keine Cafés');
+    assert.deepEqual(ids('rest'), ['4'], 'nur Restaurants');
+    assert.deepEqual(ids('cafe,bar'), ['1', '2', '3', '6', '8']);
+    assert.deepEqual(ids('bar,rest'), ['3', '4']);
+    assert.deepEqual(ids('cafe,bar,rest'), ['1', '2', '3', '4', '6', '8']);
+    assert.deepEqual(ids('unsinn'), [], 'unbekannte Art ergibt nichts');
+    assert.deepEqual(parseCafes(data, 48.2082, 16.3738, null, 'cafe,bar,rest').map(c => c.kind), ['cafe', 'cafe', 'bar', 'rest', 'cafe', 'cafe']);
     const [c, , , w] = parseCafes(data, 48.2082, 16.3738, {country_code: 'at', state: 'Wien'});
     assert.equal(c.osmId, 'node/1'); assert.equal(w.osmId, 'way/8');
     assert.equal(c.addr, 'Herrengasse 14'); assert.equal(c.outdoor, 'yes'); assert.equal(c.calc, false);

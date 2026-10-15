@@ -62,15 +62,11 @@
             <label class="check"><input type="checkbox" id="fsun"> <span data-i18n="f.sun"></span></label>
             <div class="fp-label" id="cat-label" data-i18n="filter.cat"></div>
             <div id="cats" role="group" aria-labelledby="cat-label">
-                <button type="button" class="chip" data-ptype="cafe"><svg class="icon" aria-hidden="true"><use href="#i-cafe"/></svg> <span data-i18n="ptype.cafe.s"></span></button>
-                <button type="button" class="chip" data-ptype="bar"><svg class="icon" aria-hidden="true"><use href="#i-bar"/></svg> <span data-i18n="ptype.bar.s"></span></button>
-                <button type="button" class="chip" data-ptype="rest"><svg class="icon" aria-hidden="true"><use href="#i-restaurant"/></svg> <span data-i18n="ptype.rest.s"></span></button>
+                <button type="button" class="chip" data-kind="cafe"><svg class="icon" aria-hidden="true"><use href="#i-cafe"/></svg> <span data-i18n="kind.cafe.s"></span></button>
+                <button type="button" class="chip" data-kind="bar"><svg class="icon" aria-hidden="true"><use href="#i-bar"/></svg> <span data-i18n="kind.bar.s"></span></button>
+                <button type="button" class="chip" data-kind="rest"><svg class="icon" aria-hidden="true"><use href="#i-restaurant"/></svg> <span data-i18n="kind.rest.s"></span></button>
             </div>
-            <select id="ptype" hidden data-i18n-attr="aria-label:ptype.label">
-                <option value="cafe" data-i18n="ptype.cafe"></option>
-                <option value="bar" data-i18n="ptype.bar"></option>
-                <option value="rest" data-i18n="ptype.rest"></option>
-            </select>
+            <p id="cats-note" class="fp-note" role="status" hidden data-i18n="filter.kinds.min"></p>
             <label class="fp-label" for="fsort" data-i18n="sort.label"></label>
             <select id="fsort">
                 <option value="sun" data-i18n="sort.sun"></option>
@@ -114,7 +110,7 @@
     </div>
 </dialog>
 
-<dialog id="info" class="modal" aria-labelledby="info-title">
+<dialog id="info" class="modal" aria-labelledby="info-title" tabindex="-1">
     <div class="info-head"><h2 id="info-title" data-i18n="info.title"></h2><button class="info-x" data-i18n-attr="aria-label:info.close">×</button></div>
     <div class="info-body">
         <p><label><span data-i18n="info.lang"></span>: <select id="lang" class="auto"><option value="de">Deutsch</option><option value="en">English</option></select></label></p>
