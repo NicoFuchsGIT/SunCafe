@@ -13,8 +13,8 @@ export const inWien = (lat, lng) => distM(lat, lng, WIEN.lat, WIEN.lng) < WIEN_R
 let osrv = 0;
 async function overpass(q, proxy, key, ms, onStatus) { // proxy: Pfad der Vercel-Funktion, die q selbst baut
     try { const c = sessionStorage.getItem(key); if (c) return JSON.parse(c); } catch(e) {}
-    const ask = async (url, init) => {
-        const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), ms);
+    const ask = async (url, init, limit = ms) => {
+        const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), limit);
         try {
             const r = await fetch(url, {...init, signal:ctl.signal});
             if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -24,7 +24,7 @@ async function overpass(q, proxy, key, ms, onStatus) { // proxy: Pfad der Vercel
     let j, err;
     try {
         onStatus(t('status.loading'));
-        j = await ask(proxy);
+        j = await ask(proxy, undefined, ms + 7000); // Proxy fragt bis zu 27 s selbst, nicht vorher abbrechen
     } catch(e) {
         err = e;
         for (let i = 0; i < OVERPASS.length && !j; i++) {
