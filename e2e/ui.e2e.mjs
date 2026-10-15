@@ -22,7 +22,7 @@ const MAP_STUB = () => {
         on(e, ...a) { if (e === 'load' || e === 'idle') { setTimeout(a.at(-1), 0); return this; } return super.on(e, ...a); }
         addControl() {} addLayer() {} addSource(id) { this.src[id] = {setData: noop}; } getSource(id) { return this.src[id]; }
         getCanvas() { return {style: {}}; } getZoom() { return 16; } getCenter() { return {lat: 48.2082, lng: 16.3738}; }
-        flyTo() {} jumpTo() {} easeTo() {} addImage() {} resize() {} queryRenderedFeatures() { return []; } loaded() { return true; } getStyle() { return {sources: {}}; } querySourceFeatures() { return []; }
+        setStyle() { setTimeout(() => this.fire('style.load'), 0); } flyTo() {} jumpTo() {} easeTo() {} addImage() {} resize() {} queryRenderedFeatures() { return []; } loaded() { return true; } getStyle() { return {sources: {}}; } querySourceFeatures() { return []; }
     }
     class Popup extends Ev {
         setLngLat() { return this; }
@@ -168,6 +168,21 @@ test('Chips: Jetzt ist aktiv, +1 h setzt den Schieber, „Vorschau“ erscheint'
     await page.locator('[data-chip=now]').click();
     assert.equal(await page.locator('#slider').inputValue(), '0');
     await ctx.close();
+});
+
+test('Dunkelmodus folgt der Dämmerung (−6°): Schieber auf Nacht zeigt „Vorschau: Nacht“, nachts startet die App dunkel', {skip}, async () => {
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true});
+    assert.equal(await page.evaluate(() => document.documentElement.classList.contains('dark')), false);
+    await page.locator('#slider').evaluate(el => { el.value = 24; el.dispatchEvent(new Event('input')); }); // +12 h = Mitternacht in Wien
+    await page.waitForFunction(() => document.documentElement.classList.contains('dark'));
+    assert.equal(await page.locator('#preview').innerText(), 'Vorschau: Nacht');
+    await page.locator('[data-chip=now]').click();
+    await page.waitForFunction(() => !document.documentElement.classList.contains('dark'));
+    assert.equal(await page.locator('#preview').isHidden(), true);
+    await ctx.close();
+    const n = await open('2026-07-01T22:30:00Z', () => ({status: 204}), {mobile: true});
+    assert.equal(await n.page.evaluate(() => document.documentElement.classList.contains('dark')), true);
+    await n.ctx.close();
 });
 
 test('Abend-Chip fehlt nach Sonnenuntergang, Morgen-Chip bleibt', {skip}, async () => {

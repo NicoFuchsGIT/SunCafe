@@ -1,5 +1,6 @@
 // ---------- Einstellungen ----------
 export const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TODO: gegen Protomaps/PMTiles tauschen
+export const STYLE_DARK_URL = 'https://tiles.openfreemap.org/styles/dark'; // gleiche Kacheln (openmaptiles), eigene Farben statt Invertier-Filter
 export const WIEN = {lat: 48.2082, lng: 16.3738};
 export const WIEN_RANGE = 5000; // Umkreis um den Stephansplatz, den data/wien.json abdeckt
 export const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
@@ -21,6 +22,7 @@ export const EYE_HEIGHT = 1.2;     // m, Augenhöhe einer sitzenden Person über
 export const HORIZON_SECTORS = 180;
 
 export const STEP_MIN = 30, MIN_ALT = 0;
+export const DARK_ALT = -6 * Math.PI / 180; // Oberfläche und Karte werden dunkel, wenn die Sonne tiefer steht (bürgerliche Dämmerung); Marker-Zustand „Nacht“ bleibt bei MIN_ALT
 
 // Votes (PRD F4): Modellversion wird mitgespeichert, Radius für „vor Ort“ in Metern
 export const MODEL_VERSION = '1.0';

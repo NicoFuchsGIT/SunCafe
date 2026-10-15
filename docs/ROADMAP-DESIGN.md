@@ -39,6 +39,15 @@ Entstanden aus einem Design-Review (Oktober 2026). Kapazität und Budget wie in 
 
 Rund 2,5 MB in 39 Requests ohne Kompression (eigene Dateien 1,8 MB, Kartenkacheln 340 KB, jsDelivr 310 KB, Google Fonts 42 KB). Auf Vercel mit gzip realistisch ca. 1 MB. Die Wartezeit hängt an den vielen nacheinander laufenden Requests. Nach D4 erneut messen.
 
+**Messung D3.6** (`node e2e/measure.mjs`, Headless-Chromium mit CDP-Drosselung, 390×844, Stephansplatz, gzip wie auf Vercel, Median aus 3; 4G = 9 Mbit/s und 85 ms, langsames 3G = 400 kbit/s und 400 ms; Karte, Schriften und Kacheln über das echte Netz). Die Werte sind mit der Messung oben nicht vergleichbar (anderer Rechner, andere Drosselung), deshalb derselbe Lauf vor und nach D3:
+
+| Netz | Erste Cafés vor D3 | nach D3 | Fertig vor D3 | nach D3 |
+|------|--------------------|---------|---------------|---------|
+| 4G | 5,6 s | **1,9 s** | 5,9 s | 2,0 s |
+| langsames 3G | 39,5 s | 27,3 s | 45,8 s | 33,8 s |
+
+Ursache der Verbesserung: Liste und Marker warteten auf das `load`-Ereignis der Karte (Kacheln, Schriften). Jetzt hängen sie nur noch an Position und Daten. Dazu kommen `wien.json` und Horizontkachel parallel zur Position und zum Stil, `preconnect` und der gemerkte letzte Ort. Auf langsamem 3G begrenzt die Bandbreite (rund 1 MB), nicht mehr die Reihenfolge. Das Ziel „4G unter 3 s“ ist erreicht, ein Wert auf echtem Gerät steht noch aus.
+
 Offene Messpunkte: ein 404 beim Laden (vermutlich Favicon) und eine Open-Meteo-Anfrage ohne erkennbare Antwortgröße.
 
 ---
@@ -103,6 +112,14 @@ Ziel: Die App ist unterwegs einhändig bedienbar.
 | D3.4 | Platzhalter statt leerem Bildschirm: Karte und graue Marker sofort, Färbung folgt | 3 h |
 | D3.5 | Abhängigkeiten parallel starten (Position, Wetter, Kacheln, Horizont), Reihenfolge im Code prüfen | 3 h |
 | D3.6 | Messung wiederholen: Ziel auf 4G erste Cafés unter 3 s | 1 h |
+
+**Stand:** D3.1 bis D3.6 sind im Code umgesetzt (`npm test` und `npm run test:e2e` grün). Entscheidungen dabei:
+- Dunkle Karte: OpenFreeMap liefert den Stil `dark` mit denselben Kacheln wie `positron`. Ein Wechsel tauscht den Stil (`setStyle`) und baut Quellen, Marker-Bilder und Layer neu auf; die Daten werden dafür in `srcData` gemerkt. Der Invertier-Filter entfällt.
+- Schwelle: Die Oberfläche und die Karte werden dunkel, wenn die Sonne tiefer als −6° steht (`DARK_ALT`). Der Marker-Zustand „Nacht“ bleibt bei 0° (`MIN_ALT`), denn davon hängt die Sonnenrechnung ab. Zeigt der Schieber einen anderen Modus als jetzt, steht in der Pille „Vorschau: Nacht“ bzw. „Vorschau: Tag“.
+- Kontrast: `test/contrast.test.mjs` prüft Text (4,5:1) und Schieberspur (3:1) in beiden Modi; die helle Spur ist dafür von `#8793a3` auf `#808c9c` gedunkelt.
+- Start: Der letzte Ort liegt in `localStorage` (`suncafe.last`); Karte und graue Marker erscheinen damit vor der Standortantwort. Ohne gespeicherten Ort bleibt es bei „Standort wird gesucht …“, kein stiller Wien-Fallback (E7).
+
+**Noch offen:** Sichtprüfung des dunklen Stils auf einem echten Gerät (Lesbarkeit der Beschriftung, Gelb der Marker) und Messung auf einem echten Handy.
 
 **Fertig, wenn:** Dark Mode zeigt keine Farbverfälschung, und die Messung ist dokumentiert.
 

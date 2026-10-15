@@ -41,7 +41,10 @@ async function overpass(q, proxy, key, ms, onStatus) { // proxy: Pfad der Vercel
     return j;
 }
 
-let wienCache = null;
+let wienCache = null, wienP = null;
+// wien.json einmal laden, auch wenn Start und Ortswahl gleichzeitig danach fragen
+const wienFetch = () => wienP ||= fetch('data/wien.json').then(r => { if (!r.ok) throw new Error(`HTTP Error ${r.status}`); return r.json(); }).catch(e => { wienP = null; throw e; });
+export const prefetchWien = () => { wienFetch().catch(() => {}); };
 // Lokalarten, einzeln wählbar: cafe = Café und Bäckerei, bar = Bar und Pub, rest = Restaurant
 export const KINDS = ['cafe', 'bar', 'rest'];
 // ptype: Liste der Arten, kommagetrennt in fester Reihenfolge, z. B. 'cafe' oder 'bar,rest'; ungültige Teile werden verworfen
@@ -54,9 +57,7 @@ export async function fetchCafes(lat, lng, ptype = 'cafe', onStatus = () => {}) 
     if (inWien(lat, lng)) {
         try {
             if (!wienCache) {
-                const r = await fetch('data/wien.json');
-                if (!r.ok) throw new Error(`HTTP Error ${r.status}`);
-                wienCache = await r.json();
+                wienCache = await wienFetch();
                 if (!wienCache || !wienCache.elements || wienCache.elements.length < 100) throw new Error('Datei enthält keine validen Elemente');
             }
 
@@ -71,7 +72,7 @@ export async function fetchCafes(lat, lng, ptype = 'cafe', onStatus = () => {}) 
             };
         } catch (err) {
             console.warn("Turbo fehlgeschlagen, lade live:", err.message);
-            wienCache = null; // Cache leeren, falls die Datei kaputt war
+            wienCache = wienP = null; // Cache leeren, falls die Datei kaputt war
             // Die Funktion bricht hier nicht ab, sondern rutscht automatisch zum Live-Fallback durch!
         }
     }
@@ -95,11 +96,15 @@ export function cafeQuery(lat, lng, ptype = 'cafe') {
 // ---------- Vorberechnete Horizontmasken für Wien (data/horizon/<Kachel>.json) ----------
 // Setzt c.pts und c.calc für alle Orte, die in einer Kachel stehen; fehlende Kacheln oder Orte rechnet der Client selbst.
 const horizonTiles = new Map(); // Kachel → Promise (Objekt oder null)
+const horizonTile = k => {
+    if (!horizonTiles.has(k)) horizonTiles.set(k, fetch(`data/horizon/${k}.json`).then(r => r.ok ? r.json() : null).catch(() => null));
+    return horizonTiles.get(k);
+};
+// Kachel der Position schon holen, während Orte und Wetter noch laden; loadHorizon findet sie dann fertig vor
+export const prefetchHorizon = (lat, lng) => { if (inWien(lat, lng)) horizonTile(tileKey(lat, lng)); };
 export async function loadHorizon(list) {
     await Promise.all(list.filter(c => !c.calc && inWien(c.lat, c.lng)).map(async c => {
-        const k = tileKey(c.lat, c.lng);
-        if (!horizonTiles.has(k)) horizonTiles.set(k, fetch(`data/horizon/${k}.json`).then(r => r.ok ? r.json() : null).catch(() => null));
-        const pts = (await horizonTiles.get(k))?.[c.id];
+        const pts = (await horizonTile(tileKey(c.lat, c.lng)))?.[c.id];
         const dec = pts && decodePoints(pts);
         if (dec) { c.pts = dec; c.calc = true; }
     }));
