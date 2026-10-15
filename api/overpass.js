@@ -21,6 +21,7 @@ module.exports = async (req, res) => {
   const q = cafeQuery(la, ln, ptype);
   // Alle Server gleichzeitig fragen: einzeln nacheinander passt das nicht ins Zeitlimit der Funktion, wenn einige langsam oder kaputt sind
   const ctl = new AbortController();
+  const deadline = Date.now() + 27000; // maxDuration ist 30 s
   let empty = null;
   const ask = async url => {
     const r = await fetch(url, {
@@ -30,7 +31,7 @@ module.exports = async (req, res) => {
         'User-Agent': 'SunCafe/1.0 (+https://suncafe-nu.vercel.app)'
       },
       body: 'data=' + encodeURIComponent(q),
-      signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(25000)])
+      signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(Math.max(1000, deadline - Date.now()))])
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const text = await r.text();
@@ -40,13 +41,18 @@ module.exports = async (req, res) => {
     if (!data.elements.length) { empty = empty || text; throw new Error('empty'); } // leer kann stimmen oder Überlast sein
     return text;
   };
-  try {
-    const text = await Promise.any(SERVERS.map(ask));
-    ctl.abort();
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-    return res.status(200).send(text);
-  } catch (e) { /* kein Server hat geliefert */ }
+  // Schlagen alle Server schnell fehl (500/406), nach kurzer Pause nochmal fragen, solange Zeit bleibt
+  while (Date.now() < deadline - 3000) {
+    try {
+      const text = await Promise.any(SERVERS.map(ask));
+      ctl.abort();
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+      return res.status(200).send(text);
+    } catch (e) { /* kein Server hat geliefert */ }
+    if (empty) break;
+    await new Promise(r => setTimeout(r, 1500));
+  }
   if (empty) { // alle Server meldeten nichts: ausliefern, aber nicht cachen
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
