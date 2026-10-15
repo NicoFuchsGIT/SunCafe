@@ -183,10 +183,10 @@ test('Filter-Panel: Anzahl aktiver Filter am Knopf, Kategorie per Chip', {skip},
     await page.locator('#filter-btn').click();
     assert.equal(await page.locator('#filters-panel').isVisible(), true);
     await page.locator('#fopen').check();
-    await page.locator('[data-ptype=bar]').click();
+    await page.locator('[data-kind=bar]').click();
     assert.equal(await page.locator('#filter-badge').innerText(), '2');
-    assert.equal(await page.locator('#ptype').inputValue(), 'bar');
-    assert.equal(await page.locator('[data-ptype=bar]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-kind=bar]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-kind=cafe]').getAttribute('aria-pressed'), 'true', 'Cafés bleiben gewählt');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#filters-panel').isHidden(), true);
     await ctx.close();
@@ -253,5 +253,45 @@ test('Android und Desktop: nur ein Routenlink (Google Maps)', {skip}, async () =
     const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}));
     await openFirst(page);
     assert.equal(await page.locator('#sheet .route-alt').count(), 0);
+    await ctx.close();
+});
+
+test('Lokalarten einzeln wählen: nur Bars, letzte Art bleibt gewählt, Art im Sheet', {skip}, async () => {
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}));
+    await page.locator('#filter-btn').click();
+    assert.equal(await page.locator('[data-kind=cafe]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-kind=bar]').getAttribute('aria-pressed'), 'false');
+    // Cafés ist die einzige Art: Abwählen geht nicht, es erscheint ein Hinweis
+    await page.locator('[data-kind=cafe]').click();
+    assert.equal(await page.locator('[data-kind=cafe]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#cats-note').isVisible(), true);
+    // erst Bars dazu, dann Cafés ab: nur Bars
+    await page.locator('[data-kind=bar]').click();
+    await page.locator('[data-kind=cafe]').click();
+    assert.equal(await page.locator('#cats-note').isHidden(), true);
+    assert.equal(await page.locator('[data-kind=cafe]').getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('[data-kind=bar]').getAttribute('aria-pressed'), 'true');
+    await page.waitForFunction(() => document.querySelectorAll('#list li').length > 0 && document.querySelector('#status').textContent.includes('Orten'));
+    await page.keyboard.press('Escape');
+    await page.locator('#list li').first().click();
+    await page.waitForSelector('#sheet:not([hidden])');
+    assert.equal(await page.locator('#sheet .sheet-kind').innerText().then(x => x.trim()), 'Bar / Pub');
+    await page.locator('#sheet-x').click();
+    // alle drei: Art steht in der Liste
+    await page.locator('#filter-btn').click();
+    await page.locator('[data-kind=cafe]').click();
+    await page.locator('[data-kind=rest]').click();
+    await page.waitForFunction(() => /^(Café|Bar|Restaurant)/.test(document.querySelector('#list li .sub')?.textContent || ''));
+    await ctx.close();
+});
+
+test('Info-Dialog: das „×“ hat keinen dauerhaften Fokusrahmen', {skip}, async () => {
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true});
+    await page.locator('#info-btn').click();
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'info');
+    assert.equal(await page.locator('#info .info-x').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
+    assert.equal(await page.locator('#info').evaluate(el => getComputedStyle(el).outlineStyle), 'none');
+    await page.keyboard.press('Tab'); // Tastatur: Rahmen bleibt für die Bedienung sichtbar
+    assert.equal(await page.locator('#info .info-x').evaluate(el => getComputedStyle(el).outlineStyle), 'solid');
     await ctx.close();
 });

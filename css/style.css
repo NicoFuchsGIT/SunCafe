@@ -64,6 +64,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .fp-head h2{margin:0;font-size:18px}
 .check{display:flex;gap:12px;align-items:center;min-height:44px;font-size:15px;cursor:pointer}
 .check input{width:22px;height:22px;accent-color:var(--sun)}
+.fp-note{margin:0 0 8px;font-size:13px;color:var(--mute)}
 .fp-label{display:block;margin:8px 0 4px;font-size:13px;font-weight:600;color:var(--mute)}
 #cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 
@@ -73,6 +74,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 #sheet-x{position:absolute;top:6px;right:6px}
 #sheet h2{margin:0;padding-right:48px;font-size:19px;line-height:1.25}
 #sheet p{margin:4px 0 0;font-size:14px}
+.sheet-kind{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:13px;color:var(--mute)}
+.sheet-kind .icon{width:16px;height:16px}
 .sheet-state{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px;font-weight:600}
 .sheet-state .icon{width:22px;height:22px}
 .sheet-state .st-sun,.sheet-state .st-partial{color:#b45309}
@@ -127,6 +130,7 @@ li.closed{opacity:.5}
 /* Dialoge: Info, Wo bist du? */
 /* Dialoge bleiben innerhalb der Safe-Area (Dynamic Island, Home-Indikator): oben und unten gleicher Abstand, damit „×“ nie unter der Statusleiste liegt */
 dialog.modal{--m:max(16px,env(safe-area-inset-top),env(safe-area-inset-bottom));width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 2 * var(--m));max-height:calc(100dvh - 2 * var(--m));padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);overflow:auto}
+dialog.modal:focus{outline:none}
 dialog.modal::backdrop{background:rgba(10,15,25,.5)}
 .info-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:10px 12px 4px 20px;background:var(--card)}
 .info-head h2{margin:0;font-size:18px}

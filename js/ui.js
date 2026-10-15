@@ -7,13 +7,14 @@ import {sunTrack, sunMinutes} from './sunminutes.js';
 import {wall, fmtD, openInfo} from './hours.js';
 import {deviceId, votedRecently, markVoted, buildVote, checkOnSite, sendVote} from './vote.js';
 import {t, getLang, setLang, applyStatic, fmtDist} from './i18n.js';
-import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes, inWien} from './data.js';
+import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes, inWien, ptypeOf} from './data.js';
 import {CHIPS, chipSlot} from './timechips.js';
 import {isApple, googleUrl, appleUrl} from './route.js';
 
 // ---------- Zustand ----------
 let voteOnSite = false, voteMsg = {};
 const voteBusy = new Set(), voteErr = new Set(); // pro Café: Senden läuft / letzter Versuch fehlgeschlagen (überlebt das Neuaufbauen des Sheets)
+let kinds = new Set(['cafe']); // gewählte Lokalarten (einzeln wählbar, mindestens eine)
 let place = {...WIEN}, cafes = [], wx = null, t0 = null, curId = null, mapReady = false, tz = null;
 const $ = id => document.getElementById(id);
 const setStatus = msg => { $('status').textContent = msg; };
@@ -133,7 +134,7 @@ function update() {
         li.innerHTML = `<span class="dot ${c.state}"></span><div><div class="nm"></div><div class="sub"></div></div><span class="meta"><span class="sm"></span><span class="dist">${fmtDist(c.dist)}</span></span>`;
         if (c.sunMin != null) li.querySelector('.sm').innerHTML = icon('sun') + ' ' + t('sunmin', {n: c.sunMin});
         li.querySelector('.nm').textContent = c.name || t('cafe.noName');
-        li.querySelector('.sub').textContent = stateText(c) + (c.hof && c.state !== 'night' ? t('state.courtyard') : '') + ' · ' + c.info.text;
+        li.querySelector('.sub').textContent = (kinds.size > 1 && c.kind ? t('kind.' + c.kind) + ' · ' : '') + stateText(c) + (c.hof && c.state !== 'night' ? t('state.courtyard') : '') + ' · ' + c.info.text;
         const go = () => { setView('map'); select(c.id, true); };
         li.onclick = go; li.onkeydown = e => { if (e.key === 'Enter') go(); };
         L.appendChild(li);
@@ -213,6 +214,7 @@ function openSheet(id) {
     const el = document.createElement('div');
 
     const h = document.createElement('h2'); h.id = 'sheet-name'; h.textContent = c.name || t('cafe.noName'); el.appendChild(h);
+    if (c.kind) { const k = document.createElement('div'); k.className = 'sheet-kind'; k.innerHTML = icon({cafe: 'cafe', bar: 'bar', rest: 'restaurant'}[c.kind]) + ' <span></span>'; k.lastChild.textContent = t('kind.' + c.kind); el.appendChild(k); }
 
     // Sonnenstatus mit Symbol (Farbe trägt nicht allein), rechts die Sonnenminuten
     const st = document.createElement('div'); st.className = 'sheet-state';
@@ -311,7 +313,7 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
 
     const rl = +lat.toFixed(3), rg = +lng.toFixed(3);
     try {
-        const ptype = $('ptype').value;
+        const ptype = ptypeOf(kinds);
         const [data, reg] = await Promise.all([fetchCafes(rl, rg, ptype, setStatus), rgP]);
         const list = parseCafes(data, lat, lng, reg, ptype);
         if (place !== mine) return;
@@ -406,12 +408,12 @@ let raf = 0;
 $('slider').addEventListener('input', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); });
 $('fopen').onchange = $('fsun').onchange = $('fsort').onchange = () => { updateFilterBadge(); update(); };
 // Lädt die Karte neu, sobald die Kategorie geändert wird
-$('ptype').addEventListener('change', () => {
+function kindsChanged() {
     syncCats(); updateFilterBadge();
     if (!mapReady || !t0) return;
-    cafes = []; // Liste leeren, sonst bleiben Orte der vorherigen Kategorie stehen
+    cafes = []; // Liste leeren, sonst bleiben Orte der vorherigen Art stehen
     setPlace(place.lat, place.lng, false);
-});
+}
 $('q').addEventListener('keydown', e => {
     if (e.key === 'Enter') searchAddress(e.target.value, () => { $('status').textContent = t('status.notFound'); $('where-q').value = e.target.value; askWhere('notfound'); });
 });
@@ -445,7 +447,7 @@ langSel.onchange = () => { setLang(langSel.value); setView(view()); updateFilter
 
 // ---------- Info-Dialog ----------
 const info = $('info');
-$('info-btn').onclick = () => info.showModal();
+$('info-btn').onclick = () => { info.showModal(); info.focus(); }; // Fokus nicht auf das × (sonst dauerhaft gelber Rahmen)
 for (const d of document.querySelectorAll('dialog')) {
     d.querySelector('.info-x').onclick = () => d.close();
     d.addEventListener('click', e => { if (e.target === d) d.close(); }); // Klick auf den Hintergrund schließt
@@ -494,17 +496,21 @@ $('filter-btn').onclick = () => filtersOpen() ? closeFilters(true) : openFilters
 $('filters-x').onclick = () => closeFilters(true);
 
 // Anzahl aktiver Filter am Knopf (Sortierung zählt nicht, sie filtert nichts)
-const filterCount = () => +$('fopen').checked + +$('fsun').checked + +($('ptype').value !== 'cafe');
+const filterCount = () => +$('fopen').checked + +$('fsun').checked + +!(kinds.size === 1 && kinds.has('cafe'));
 function updateFilterBadge() {
     const n = filterCount(), b = $('filter-badge');
     b.hidden = !n; b.textContent = n;
     $('filter-btn').setAttribute('aria-label', t('filter.btn') + (n ? ', ' + t('filter.count', {n}) : ''));
 }
-// Kategorie-Chips steuern das (versteckte) Select, damit Handler und Zustand an einer Stelle bleiben
-function syncCats() { for (const b of $('cats').children) b.setAttribute('aria-pressed', String(b.dataset.ptype === $('ptype').value)); }
+// Lokalarten einzeln an- und abwählen (z. B. nur Bars); die letzte gewählte bleibt gewählt
+function syncCats() { for (const b of $('cats').children) b.setAttribute('aria-pressed', String(kinds.has(b.dataset.kind))); }
 $('cats').addEventListener('click', e => {
-    const b = e.target.closest('[data-ptype]'); if (!b || $('ptype').value === b.dataset.ptype) return;
-    $('ptype').value = b.dataset.ptype; $('ptype').dispatchEvent(new Event('change'));
+    const b = e.target.closest('[data-kind]'); if (!b) return;
+    const k = b.dataset.kind;
+    if (kinds.has(k) && kinds.size === 1) { $('cats-note').hidden = false; return; }
+    $('cats-note').hidden = true;
+    if (kinds.has(k)) kinds.delete(k); else kinds.add(k);
+    kindsChanged();
 });
 syncCats(); updateFilterBadge();
 

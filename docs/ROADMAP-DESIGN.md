@@ -79,6 +79,7 @@ Ziel: Die App ist unterwegs einhändig bedienbar.
 **Stand:** D2.1 bis D2.8 sind im Code umgesetzt und mit Playwright-Mobile-Emulation (iPhone 14, 390 × 844) und Desktop-Ansicht geprüft (`npm run test:e2e`). Entscheidungen dabei:
 - Standard-Sortierung ist „Meiste Sonne“ bis 800 m, weiter entfernte Orte folgen nach Entfernung.
 - Chip „Abend“ = eine Stunde vor Sonnenuntergang (entfällt danach), „Morgen früh“ = zwei Stunden nach Sonnenaufgang.
+- Lokalarten (Cafés & Bäckereien, Bars & Pubs, Restaurants) sind im Filter einzeln wählbar, mindestens eine bleibt gewählt; „Bars“ liefert nur noch Bars. Der Proxy `api/overpass.js` nimmt `ptype` als kommagetrennte Liste (z. B. `bar,rest`).
 - Mobil ist die Liste ein Vollbild-Overlay, am Desktop bleibt sie als Spalte links.
 - Standort wird sofort abgefragt; bei Ablehnung, Fehler oder erfolgloser Adresssuche öffnet sich „Wo bist du?“ (Adresse, erneut versuchen, auf der Karte wählen, Wien Zentrum). Es gibt keinen stillen Wien-Fallback mehr.
 - Manuell platzieren hat einen festen Pin-Knopf in der Topbar (mobil und Desktop); Zoom-Knöpfe gibt es nur am Desktop. Der Dialog „Wo bist du?“ bietet es zusätzlich an.
