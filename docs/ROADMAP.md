@@ -98,8 +98,8 @@ Ziel: 1-Tap-Votes zur Kalibrierung, rechtzeitig zur Terrassensaison.
 
 | # | Aufgabe | PRD |
 |---|---------|-----|
-| 4.1 | Ground-Truth-Set auf 20–30 Cafés zu verschiedenen Tages- und Jahreszeiten ausbauen (`validation/groundtruth.csv`) | F5.2 |
-| 4.2 | Auswerteskript (Python oder MATLAB, CSV als Schnittstelle): Trefferquote, Konfusionsmatrix, Fehler nach Sonnenhöhe, Tageszeit und Höhenquelle | F5.3 |
+| 4.1 🚧 | Ground-Truth-Set auf 20–30 Cafés zu verschiedenen Tages- und Jahreszeiten ausbauen (`validation/groundtruth.csv`) | F5.2 |
+| 4.2 ✅ | Auswerteskript (Python oder MATLAB, CSV als Schnittstelle): Trefferquote, Konfusionsmatrix, Fehler nach Sonnenhöhe, Tageszeit und Höhenquelle | F5.3 |
 | 4.3 | Parameter kalibrieren: Standardhöhe statt pauschal 15 m (eventuell je Gebäudetyp oder Stadtteil), Terrassen-Offset, Augenhöhe | F5.4 |
 | 4.4 | Ergebnisse als Methodik- und Validierungsseite dokumentieren (Portfolio) | Z4 |
 
