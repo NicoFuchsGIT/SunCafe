@@ -19,29 +19,34 @@ module.exports = async (req, res) => {
   }
   const {cafeQuery} = await import('../js/data.js');
   const q = cafeQuery(la, ln, ptype);
+  // Alle Server gleichzeitig fragen: einzeln nacheinander passt das nicht ins Zeitlimit der Funktion, wenn einige langsam oder kaputt sind
+  const ctl = new AbortController();
   let empty = null;
-  for (const url of SERVERS) {
-    try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'SunCafe/1.0 (+https://suncafe-nu.vercel.app)'
-        },
-        body: 'data=' + encodeURIComponent(q),
-        signal: AbortSignal.timeout(8000)
-      });
-      if (!r.ok) continue;
-      const text = await r.text();
-      // Überlastete Server liefern oft 200 mit „remark“ oder ohne Elemente: nächsten Server fragen
-      let data; try { data = JSON.parse(text); } catch (e) { continue; }
-      if (!Array.isArray(data.elements) || data.remark) continue;
-      if (!data.elements.length) { empty = empty || text; continue; } // leer kann stimmen oder Überlast sein: erst die anderen fragen
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-      return res.status(200).send(text);
-    } catch (e) { /* nächster Server */ }
-  }
+  const ask = async url => {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'SunCafe/1.0 (+https://suncafe-nu.vercel.app)'
+      },
+      body: 'data=' + encodeURIComponent(q),
+      signal: AbortSignal.any([ctl.signal, AbortSignal.timeout(9000)])
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const text = await r.text();
+    // Überlastete Server liefern oft 200 mit „remark“ oder ohne Elemente
+    const data = JSON.parse(text);
+    if (!Array.isArray(data.elements) || data.remark) throw new Error('overload');
+    if (!data.elements.length) { empty = empty || text; throw new Error('empty'); } // leer kann stimmen oder Überlast sein
+    return text;
+  };
+  try {
+    const text = await Promise.any(SERVERS.map(ask));
+    ctl.abort();
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+    return res.status(200).send(text);
+  } catch (e) { /* kein Server hat geliefert */ }
   if (empty) { // alle Server meldeten nichts: ausliefern, aber nicht cachen
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');

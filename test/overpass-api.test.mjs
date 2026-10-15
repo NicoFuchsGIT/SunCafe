@@ -41,13 +41,13 @@ test('Proxy: mehrere Arten ergeben eine gemeinsame Abfrage', async t => {
     assert.doesNotMatch(body, /"shop"="bakery"/);
 });
 
-test('Proxy cached keine Überlast-Antworten (remark, kaputtes JSON) und fragt den nächsten Server', async t => {
+test('Proxy cached keine Überlast-Antworten (remark, kaputtes JSON) und fragt alle Server', async t => {
     const answers = ['{"elements":[],"remark":"runtime error: Query timed out"}', '<html>busy</html>', '{"elements":[{"type":"node","id":1}]}'];
     let n = 0;
     t.mock.method(globalThis, 'fetch', async () => ({ok: true, text: async () => answers[n++]}));
     const res = await call({lat: '48.2', lng: '16.37', ptype: 'cafe'});
     assert.equal(res.code, 200);
-    assert.equal(n, 3);
+    assert.ok(n >= 3);
     assert.match(res.body, /"id":1/);
     assert.match(res.headers['Cache-Control'], /s-maxage/);
 });
