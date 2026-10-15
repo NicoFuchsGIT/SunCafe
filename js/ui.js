@@ -1,5 +1,5 @@
 // ---------- Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung ----------
-import {STYLE_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, EYE_HEIGHT} from './config.js';
+import {STYLE_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, EYE_HEIGHT, CAFE_RADIUS} from './config.js';
 import {M_PER_DEG, kxAt} from './geo.js';
 import {attachBuildings} from './shade.js';
 import {attachMasks, maskShade} from './horizon.js';
@@ -279,7 +279,9 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
                 addedCount++;
             }
         }
-        console.log(`Cache: ${existingIds.size} Orte bekannt, ${addedCount} neu hinzugefügt.`);
+        // Orte, die beim Ortswechsel außer Reichweite geraten sind, verwerfen, sonst wachsen Liste und Speicher ohne Grenze
+        cafes = cafes.filter(c => c.dist <= CAFE_RADIUS + 50);
+        console.log(`Cache: ${existingIds.size} Orte bekannt, ${addedCount} neu hinzugefügt, ${cafes.length} im Radius.`);
     } catch(e) {
         if (place !== mine) return;
         if (cafes.length === 0) {
@@ -333,7 +335,6 @@ $('q').addEventListener('keydown', async e => {
     if (e.key !== 'Enter') return;
     const q = e.target.value.trim(); if (!q) return;
     const hit = await geocode(q);
-    if (hit === undefined) return; // letzte Anfrage weniger als 1,1 s her
     if (hit) setPlace(hit.lat, hit.lng, true, hit.rg); else $('status').textContent = t('status.notFound');
 });
 

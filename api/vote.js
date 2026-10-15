@@ -25,6 +25,9 @@ const tooMany = (res, seconds) => { res.setHeader('Retry-After', String(seconds)
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({error: 'method not allowed'}); }
+  // Browser senden Origin mit: Anfragen von fremden Seiten ablehnen (kein Schutz gegen Skripte, dafür das Rate-Limit)
+  const h0 = req.headers || {}, origin = h0.origin, host = h0['x-forwarded-host'] || h0.host;
+  if (origin && host) { let oh = null; try { oh = new URL(origin).host; } catch (e) { /* ungültig */ } if (oh !== host) return res.status(403).json({error: 'forbidden'}); }
   const vote = parse(req.body);
   if (!vote) return res.status(400).json({error: 'bad request'});
   const salt = process.env.VOTE_SALT;

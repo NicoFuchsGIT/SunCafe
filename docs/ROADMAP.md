@@ -90,11 +90,7 @@ Ziel: 1-Tap-Votes zur Kalibrierung, rechtzeitig zur Terrassensaison.
 
 **Abgrenzung zur Design-Roadmap:** Die Vote-UI sitzt zunächst im Popup. Mit D2.2 (Café-Sheet statt Popup) zieht sie ins Sheet um; die Icons stammen aus dem Sprite von D1.5.
 
-**Bekannte Testlücken (aus dem [Code-Review](CODE-REVIEW.md)), vor Phase 4 schließen:**
-- `js/ui.js` hat keine Tests (Playwright-Smoke-Test für Popup und Vote inklusive Fehlerpfad).
-- `js/data.js`: `parseCafes` (Kettenfilter, Terrassenzuordnung, `ptype`), `fetchCafes` (Wien-Turbo und Fallback bei kaputter Datei), `geocode`.
-- `js/hours.js`: `openInfo` (offen, geschlossen, unklar, Zeitzone) und `wall`.
-- (`api/overpass.js` und `storage.incrWithTtl` sind mit 3.6 getestet; die UI-Teile von 3.6 – Fehlermeldung, Doppelversand, frischer Zeitstempel – bleiben ohne Test, bis `ui.js` einen Smoke-Test hat.)
+**Testlücken (aus dem [Code-Review](CODE-REVIEW.md)):** geschlossen mit `test/data.test.mjs` (`parseCafes`, `fetchCafes` mit Wien-Turbo und Fallbacks, `geocode`, `fetchWeather`), `test/hours.test.mjs` (`wall`, `openInfo`, `parseHours`), den erweiterten API-Tests (Overpass, `incrWithTtl`, Origin, Export) und `e2e/ui.e2e.mjs` (Popup, Vote, Fehlerpfad, Nacht, mit Attrappe statt WebGL-Karte; `npm run test:e2e`, benötigt Playwright, läuft nicht in der CI). Offen bleiben Tests für `loadBuildings`/`loadHorizon` und die echte Karte.
 
 ---
 

@@ -26,7 +26,12 @@ export default [
     languageOptions: {sourceType: 'commonjs', globals: globals.node}
   },
   {
-    files: ['test/**/*.mjs', 'eslint.config.mjs'],
+    files: ['test/**/*.mjs', 'e2e/**/*.mjs', 'eslint.config.mjs'],
     languageOptions: {sourceType: 'module', globals: globals.node}
+  },
+  {
+    // Der Code in MAP_STUB läuft im Browser
+    files: ['e2e/**/*.mjs'],
+    languageOptions: {globals: {...globals.node, ...globals.browser}}
   }
 ];

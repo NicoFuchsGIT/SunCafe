@@ -5,6 +5,7 @@ node_modules
 .claude
 docs
 test
+e2e
 pipeline
 api
 package.json
