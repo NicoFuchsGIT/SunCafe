@@ -3,7 +3,7 @@ export const STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'; // TOD
 export const STYLE_DARK_URL = 'https://tiles.openfreemap.org/styles/dark'; // gleiche Kacheln (openmaptiles), eigene Farben statt Invertier-Filter
 export const WIEN = {lat: 48.2082, lng: 16.3738};
 export const WIEN_RANGE = 5000; // Umkreis um den Stephansplatz, den data/wien.json abdeckt
-export const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
+export const OVERPASS = ['https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass-api.de/api/interpreter','https://lz4.overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.openstreetmap.fr/api/interpreter'];
 
 // Radien in Metern
 export const CAFE_RADIUS = 1000;          // Suchradius für Cafés um den gewählten Ort
