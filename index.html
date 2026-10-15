@@ -6,6 +6,8 @@
     <title>SunCafe – Finde Sonnenplätze</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="vendor/maplibre-gl.css">
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+    <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
     <link rel="preload" href="fonts/BricolageGrotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -73,7 +75,7 @@
                 <option value="dist" data-i18n="sort.dist"></option>
             </select>
         </div>
-        <div id="tl"><span id="tlabel"></span><span id="preview" class="pill" aria-live="polite" hidden data-i18n="time.preview"></span><small id="sunstate"></small></div>
+        <div id="tl"><span id="tlabel"></span><span id="preview" class="pill" aria-live="polite" hidden></span><small id="sunstate"></small></div>
         <div id="chips" role="group" data-i18n-attr="aria-label:chip.label">
             <button type="button" class="chip" data-chip="now" data-i18n="chip.now"></button>
             <button type="button" class="chip" data-chip="plus1" data-i18n="chip.plus1"></button>

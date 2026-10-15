@@ -1,5 +1,5 @@
 // ---------- Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung ----------
-import {STYLE_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, EYE_HEIGHT, CAFE_RADIUS, SORT_SUN_MAX_M} from './config.js';
+import {STYLE_URL, STYLE_DARK_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, DARK_ALT, EYE_HEIGHT, CAFE_RADIUS, SORT_SUN_MAX_M} from './config.js';
 import {M_PER_DEG, kxAt} from './geo.js';
 import {attachBuildings} from './shade.js';
 import {attachMasks, maskShade} from './horizon.js';
@@ -7,7 +7,7 @@ import {sunTrack, sunMinutes} from './sunminutes.js';
 import {wall, fmtD, openInfo} from './hours.js';
 import {deviceId, votedRecently, markVoted, buildVote, checkOnSite, sendVote} from './vote.js';
 import {t, getLang, setLang, applyStatic, fmtDist} from './i18n.js';
-import {sleep, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes, inWien, ptypeOf} from './data.js';
+import {sleep, prefetchWien, prefetchHorizon, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes, inWien, ptypeOf} from './data.js';
 import {CHIPS, chipSlot} from './timechips.js';
 import {isApple, googleUrl, appleUrl} from './route.js';
 
@@ -15,14 +15,21 @@ import {isApple, googleUrl, appleUrl} from './route.js';
 let voteOnSite = false, voteMsg = {};
 const voteBusy = new Set(), voteErr = new Set(); // pro Café: Senden läuft / letzter Versuch fehlgeschlagen (überlebt das Neuaufbauen des Sheets)
 let kinds = new Set(['cafe']); // gewählte Lokalarten (einzeln wählbar, mindestens eine)
-let place = {...WIEN}, cafes = [], wx = null, t0 = null, curId = null, mapReady = false, tz = null;
+// Letzter Ort aus der Vorsitzung: Karte und graue Marker erscheinen sofort, die Position folgt (D3.4)
+const LAST_KEY = 'suncafe.last';
+const lastPlace = (() => { try { const p = JSON.parse(localStorage.getItem(LAST_KEY)); return p && Number.isFinite(p.lat) && Number.isFinite(p.lng) ? {lat:p.lat, lng:p.lng} : null; } catch(e) { return null; } })();
+let place = {...(lastPlace || WIEN)}, cafes = [], wx = null, t0 = null, curId = null, mapReady = false, tz = null, dark = false;
 const $ = id => document.getElementById(id);
 const setStatus = msg => { $('status').textContent = msg; };
 // Schieber auf 0 ist „Jetzt“: echte Uhrzeit statt t0, das auf STEP_MIN abgerundet ist und beim Offenlassen veraltet
 const curTime = () => +$('slider').value ? new Date(t0.getTime() + $('slider').value * STEP_MIN * 60000) : new Date();
 
 // ---------- Karte ----------
-const map = new maplibregl.Map({container:'map', style:STYLE_URL, center:[place.lng, place.lat], zoom:15.5, attributionControl:false});
+// Startstil nach Sonnenstand jetzt, damit beim Öffnen nachts nichts hell aufblitzt
+dark = SunCalc.getPosition(new Date(), place.lat, place.lng).altitude < DARK_ALT;
+let styleDark = dark; // Stil, der gerade (oder zuletzt) in die Karte geladen wurde
+document.documentElement.classList.toggle('dark', dark);
+const map = new maplibregl.Map({container:'map', style:dark ? STYLE_DARK_URL : STYLE_URL, center:[place.lng, place.lat], zoom:15.5, attributionControl:false});
 map.addControl(new maplibregl.AttributionControl({compact:true, customAttribution:'© OpenStreetMap · OpenFreeMap · Stadt Wien'}));
 map.addControl(new maplibregl.NavigationControl({showCompass:false}), 'top-right'); // mobil per CSS ausgeblendet (Pinch)
 
@@ -51,13 +58,17 @@ function markerImage(key) {
     });
 }
 
-map.on('load', async () => {
-    map.addSource('cafes', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
-    map.addSource('center', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+// Quelldaten merken: ein Stilwechsel (hell/dunkel) löscht Quellen, Layer und Bilder, sie werden danach neu angelegt
+const EMPTY = {type:'FeatureCollection', features:[]}, srcData = {};
+const setSrc = (id, data) => { srcData[id] = data; map.getSource(id)?.setData(data); };
+let markImgs = null;
+async function addOverlays() {
+    for (const id of ['cafes', 'center', 'terr']) map.addSource(id, {type:'geojson', data:srcData[id] || EMPTY});
     map.addLayer({id:'center', type:'circle', source:'center', paint:{'circle-radius':6,'circle-color':'#3b82f6','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
-    const keys = Object.keys(MARKS), imgs = await Promise.all(keys.map(markerImage));
-    if (imgs.every(Boolean)) {
-        keys.forEach((k, i) => map.addImage('m-' + k, imgs[i], {pixelRatio:2}));
+    const keys = Object.keys(MARKS);
+    markImgs ||= await Promise.all(keys.map(markerImage));
+    if (markImgs.every(Boolean)) {
+        keys.forEach((k, i) => map.addImage('m-' + k, markImgs[i], {pixelRatio:2}));
         map.addLayer({id:'cafes', type:'symbol', source:'cafes',
             layout:{'icon-image':['concat','m-',['get','ic']], 'icon-size':['interpolate',['linear'],['zoom'],12,.55,16,.85,18,1], 'icon-allow-overlap':true, 'icon-ignore-placement':true}});
     } else { // Fallback ohne Symbole: farbige Kreise wie bisher
@@ -67,34 +78,47 @@ map.on('load', async () => {
             'circle-opacity':['case',['==',['get','o'],0],0.4,1],
             'circle-stroke-width':1.5, 'circle-stroke-color':'#ffffff'}});
     }
-    map.addSource('terr', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
     map.addLayer({id:'terr', type:'circle', source:'terr', paint:{'circle-radius':6, 'circle-color':['match',['get','s'],'sun','#ffb703','#6c7a89'], 'circle-stroke-width':2.5, 'circle-stroke-color':'#14213d'}});
+}
+map.on('load', async () => {
+    await addOverlays();
     map.on('click', 'cafes', e => select(e.features[0].properties.id));
     map.on('click', e => { if (curId && !map.queryRenderedFeatures(e.point, {layers:['cafes']}).length) closeSheet(); }); // leere Fläche schließt das Sheet
     map.on('mouseenter','cafes',()=>map.getCanvas().style.cursor='pointer');
     map.on('mouseleave','cafes',()=>map.getCanvas().style.cursor='');
     mapReady = true;
-    locate();
+    if (dark !== styleDark) { styleDark = dark; setMapTheme(dark); } // Ort oder Zeit haben vor dem Laden anders entschieden
 });
+// Hell/dunkel: Stil tauschen und Überlagerungen neu aufbauen; update() läuft danach erneut
+function setMapTheme(d) {
+    mapReady = false;
+    map.once('style.load', async () => { await addOverlays(); mapReady = true; });
+    map.setStyle(d ? STYLE_DARK_URL : STYLE_URL, {diff:false}); // ohne Diff: sonst bleibt style.load aus
+}
 
 // ---------- Terrassenpunkte auf der Karte ----------
 function showTerr(c) {
     const kx = kxAt(c.lat);
-    map.getSource('terr').setData({type:'FeatureCollection', features:(c.pts || []).map((p, i) => ({type:'Feature',
+    setSrc('terr', {type:'FeatureCollection', features:(c.pts || []).map((p, i) => ({type:'Feature',
         geometry:{type:'Point', coordinates:[c.lng + p.x / kx, c.lat + p.y / M_PER_DEG]},
         properties:{s: c.res && c.res[i] === false ? 'sun' : 'shade'}}))});
 }
 
 // ---------- Anzeige ----------
 function update() {
-    if (!mapReady || !t0) return;
+    if (!t0) return; // Liste und Marker brauchen die Karte nicht: setSrc merkt die Daten, bis die Quellen existieren
     const d = curTime(), s = !+$('slider').value, w = wall(d, tz);
     $('tlabel').textContent = s ? t('time.now') : fmtD(w);
     $('preview').hidden = s;
     $('slider').setAttribute('aria-valuetext', $('tlabel').textContent);
     const sp = SunCalc.getPosition(d, place.lat, place.lng), alt = sp.altitude, az = sp.azimuth + Math.PI;
-    const night = alt < MIN_ALT;
-    document.documentElement.classList.toggle('dark', night);
+    const night = alt < MIN_ALT, isDark = alt < DARK_ALT;
+    // „Vorschau: Nacht/Tag“, wenn der Schieber die Oberfläche gegenüber jetzt umschaltet
+    const nowDark = SunCalc.getPosition(new Date(), place.lat, place.lng).altitude < DARK_ALT;
+    $('preview').textContent = t(isDark === nowDark ? 'time.preview' : isDark ? 'time.previewNight' : 'time.previewDay');
+    document.documentElement.classList.toggle('dark', isDark);
+    dark = isDark;
+    if (mapReady && dark !== styleDark) { styleDark = dark; setMapTheme(dark); } // vor dem Laden der Karte übernimmt das der load-Handler
     $('sunstate').textContent = night ? t('sun.below') : t('sun.alt', {deg: Math.round(alt * 180 / Math.PI)});
     showWx(d);
     const onlyOpen = $('fopen').checked, onlySun = $('fsun').checked;
@@ -114,7 +138,7 @@ function update() {
         if (onlySun && (c.state !== 'sun' || c.hof)) continue;
         rows.push(c);
     }
-    map.getSource('cafes').setData({type:'FeatureCollection', features:rows.map(c => ({type:'Feature',
+    setSrc('cafes', {type:'FeatureCollection', features:rows.map(c => ({type:'Feature',
             geometry:{type:'Point', coordinates:[c.lng, c.lat]},
             properties:{id:c.id, s:c.state, o:c.info.o, ic:c.info.o === 0 ? 'closed' : c.state === 'sun' && c.partial ? 'partial' : c.state}}))});
     // Sonnenminuten im Fenster ab d (F3.1); Sonnenstand einmal für alle, null solange Schatten fehlt
@@ -261,7 +285,7 @@ function openSheet(id) {
 function closeSheet(instant = false) {
     if (!curId) return;
     curId = null; $('sheet').hidden = true; markList(null);
-    map.getSource('terr').setData({type:'FeatureCollection', features:[]});
+    setSrc('terr', EMPTY);
     const pad = {top:0, left:0, right:0, bottom:0};
     if (instant) map.jumpTo({padding:pad}); else map.easeTo({padding:pad});
 }
@@ -290,7 +314,9 @@ async function setPlace(lat, lng, move = true, knownRg = null) {
     const mine = place = {lat, lng};
     const rgP = knownRg ? Promise.resolve(knownRg) : region(lat, lng);
     closeSheet(true);
-    map.getSource('center').setData({type:'Point', coordinates:[lng, lat]});
+    try { localStorage.setItem(LAST_KEY, JSON.stringify({lat, lng})); } catch(e) {}
+    prefetchHorizon(lat, lng);
+    setSrc('center', {type:'Point', coordinates:[lng, lat]});
     if (move) map.flyTo({center:[lng, lat], zoom:Math.max(map.getZoom(), 15.5)});
 
     // 1. NEU: Distanzen der BEREITS GELADENEN Orte sofort aktualisieren
@@ -380,6 +406,7 @@ $('notice-x').onclick = () => { $('notice').hidden = true; };
 
 // ---------- Standort: sofort fragen, bei Ablehnung „Wo bist du?“ statt stillem Wien ----------
 function locate() {
+    if (!$('where').open && !cafes.length) setStatus(t('status.locating'));
     if (!navigator.geolocation) return askWhere('unavailable');
     navigator.geolocation.getCurrentPosition(
         p => { if ($('where').open) $('where').close(); setPlace(p.coords.latitude, p.coords.longitude); },
@@ -410,7 +437,7 @@ $('fopen').onchange = $('fsun').onchange = $('fsort').onchange = () => { updateF
 // Lädt die Karte neu, sobald die Kategorie geändert wird
 function kindsChanged() {
     syncCats(); updateFilterBadge();
-    if (!mapReady || !t0) return;
+    if (!t0) return;
     cafes = []; // Liste leeren, sonst bleiben Orte der vorherigen Art stehen
     setPlace(place.lat, place.lng, false);
 }
@@ -539,3 +566,9 @@ $('confirm-place-btn').onclick = () => {
     setPicking(false);
     setTimeout(() => setPlace(c.lat, c.lng), 60); // nach dem resize, sonst fliegt die Karte zur alten Mitte
 };
+
+// ---------- Start: alles Unabhängige gleichzeitig anstoßen (D3.5) ----------
+// Karte lädt schon (Konstruktor oben); Position, wien.json, Horizontkachel und Wetter des letzten Orts laufen parallel dazu
+prefetchWien();
+if (lastPlace) setPlace(lastPlace.lat, lastPlace.lng, false);
+locate();
