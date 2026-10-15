@@ -142,6 +142,7 @@ const stateText = c => c.state === 'sun' && c.partial ? t('state.partial') : t('
 function voteBox(c) {
     const box = document.createElement('div'); box.className = 'vote';
     const q = document.createElement('div'); q.className = 'vote-q'; q.textContent = t('vote.q'); box.appendChild(q);
+    if (c.state === 'night') { box.hidden = true; return box; } // nachts gibt es nichts zu bewerten
     const note = txt => { const n = document.createElement('p'); n.className = 'vote-note'; n.textContent = txt; box.appendChild(n); };
     const sp = SunCalc.getPosition(new Date(), c.lat, c.lng);
     const payload = +$('slider').value ? null : buildVote(c, {alt: sp.altitude, az: sp.azimuth + Math.PI, device: deviceId()});
