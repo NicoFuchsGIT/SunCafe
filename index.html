@@ -25,54 +25,98 @@
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r=".6"/><circle cx="4.5" cy="12" r=".6"/><circle cx="4.5" cy="18" r=".6"/></symbol>
   <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></symbol>
 </svg>
-<div id="app">
-    <aside id="side">
+<div id="app" data-view="map">
+    <div id="map"></div>
+
+    <div id="topbar">
+        <div class="tb-row">
+            <input id="q" type="search" enterkeyhint="search" data-i18n-attr="placeholder:search.ph;aria-label:search.label">
+            <button id="info-btn" class="icon-btn" data-i18n-attr="aria-label:info.btn" aria-haspopup="dialog">i</button>
+            <button id="locate-btn" class="icon-btn" data-i18n-attr="aria-label:locate.btn;title:locate.btn"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+        </div>
+        <div id="wx" class="pill" data-i18n="wx.loading"></div>
+        <div id="notice" class="notice" role="status" hidden>
+            <span data-i18n="notice.outside"></span>
+            <button id="notice-x" class="icon-btn small" data-i18n-attr="aria-label:notice.close">×</button>
+        </div>
+    </div>
+
+    <aside id="side" tabindex="-1">
         <header>
-            <h1><svg class="icon logo" aria-hidden="true"><use href="#i-sun"/></svg> SunCafe <button id="info-btn" class="info-btn" data-i18n-attr="aria-label:info.btn" aria-haspopup="dialog">i</button></h1>
-            <div id="wx" data-i18n="wx.loading"></div>
-            <div class="row">
-                <input id="q" type="search" data-i18n-attr="placeholder:search.ph;aria-label:search.label">
-            </div>
+            <h1><svg class="icon logo" aria-hidden="true"><use href="#i-sun"/></svg> SunCafe</h1>
+            <div id="status" data-i18n="status.hint"></div>
         </header>
-        <div id="time">
-            <div id="tl"><span id="tlabel"></span><small id="sunstate"></small></div>
-            <input id="slider" type="range" min="0" max="96" value="0" data-i18n-attr="aria-label:slider.label">
-        </div>
-        <div id="filters">
-            <label><input type="checkbox" id="fopen"> <span data-i18n="f.open"></span></label>
-            <label><input type="checkbox" id="fsun"> <span data-i18n="f.sun"></span></label>
-        </div>
-        <div style="padding: 0 16px 12px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px;">
-            <select id="ptype" data-i18n-attr="aria-label:ptype.label">
+        <ul id="list"></ul>
+    </aside>
+
+    <section id="sheet" role="dialog" aria-labelledby="sheet-name" tabindex="-1" hidden>
+        <button id="sheet-x" class="icon-btn small" data-i18n-attr="aria-label:sheet.close">×</button>
+        <div id="sheet-body"></div>
+    </section>
+
+    <div id="dock">
+        <div id="filters-panel" role="group" aria-labelledby="filters-title" hidden>
+            <div class="fp-head"><h2 id="filters-title" data-i18n="filter.title"></h2><button id="filters-x" class="icon-btn small" data-i18n-attr="aria-label:filter.close">×</button></div>
+            <label class="check"><input type="checkbox" id="fopen"> <span data-i18n="f.open"></span></label>
+            <label class="check"><input type="checkbox" id="fsun"> <span data-i18n="f.sun"></span></label>
+            <div class="fp-label" id="cat-label" data-i18n="filter.cat"></div>
+            <div id="cats" role="group" aria-labelledby="cat-label">
+                <button type="button" class="chip" data-ptype="cafe"><svg class="icon" aria-hidden="true"><use href="#i-cafe"/></svg> <span data-i18n="ptype.cafe.s"></span></button>
+                <button type="button" class="chip" data-ptype="bar"><svg class="icon" aria-hidden="true"><use href="#i-bar"/></svg> <span data-i18n="ptype.bar.s"></span></button>
+                <button type="button" class="chip" data-ptype="rest"><svg class="icon" aria-hidden="true"><use href="#i-restaurant"/></svg> <span data-i18n="ptype.rest.s"></span></button>
+            </div>
+            <select id="ptype" hidden data-i18n-attr="aria-label:ptype.label">
                 <option value="cafe" data-i18n="ptype.cafe"></option>
                 <option value="bar" data-i18n="ptype.bar"></option>
                 <option value="rest" data-i18n="ptype.rest"></option>
             </select>
-            <select id="fsort" data-i18n-attr="aria-label:sort.label">
-                <option value="dist" data-i18n="sort.dist"></option>
+            <label class="fp-label" for="fsort" data-i18n="sort.label"></label>
+            <select id="fsort">
                 <option value="sun" data-i18n="sort.sun"></option>
+                <option value="dist" data-i18n="sort.dist"></option>
             </select>
         </div>
-        <div id="status" data-i18n="status.hint"></div>
-        <ul id="list"></ul>
-    </aside>
-    <div id="map">
-        <button id="toggle-sidebar" class="map-overlay-btn" data-i18n-attr="aria-label:list.toggle">
-            <span id="ts-icon"><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></span> <svg class="icon" aria-hidden="true"><use href="#i-list"/></svg> <span data-i18n="list.btn"></span>
-        </button>
+        <div id="tl"><span id="tlabel"></span><span id="preview" class="pill" aria-live="polite" hidden data-i18n="time.preview"></span><small id="sunstate"></small></div>
+        <div id="chips" role="group" data-i18n-attr="aria-label:chip.label">
+            <button type="button" class="chip" data-chip="now" data-i18n="chip.now"></button>
+            <button type="button" class="chip" data-chip="plus1" data-i18n="chip.plus1"></button>
+            <button type="button" class="chip" data-chip="evening" data-i18n="chip.evening"></button>
+            <button type="button" class="chip" data-chip="morning" data-i18n="chip.morning"></button>
+        </div>
+        <input id="slider" type="range" min="0" max="96" value="0" data-i18n-attr="aria-label:slider.label">
+        <div id="dock-btns">
+            <button id="toggle-sidebar" class="btn" aria-expanded="false" aria-controls="side" data-i18n-attr="aria-label:list.open"><svg class="icon" aria-hidden="true"><use id="ts-use" href="#i-list"/></svg> <span id="ts-text" data-i18n="list.btn"></span></button>
+            <button id="filter-btn" class="btn" aria-expanded="false" aria-controls="filters-panel"><svg class="icon" aria-hidden="true"><use href="#i-filter"/></svg> <span data-i18n="filter.btn"></span><span id="filter-badge" class="badge" hidden></span></button>
+        </div>
+    </div>
 
-        <!-- NEU: Der schwebende Marker in der Bildschirmmitte -->
-        <div id="center-marker" class="hidden-ui"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></div>
-
-        <!-- NEU: Der Bestätigungs-Button unten mittig -->
-        <button id="confirm-place-btn" class="map-overlay-btn hidden-ui" data-i18n="pick.confirm"></button>
+    <div id="center-marker" class="hidden-ui"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></div>
+    <div id="pick-bar" class="hidden-ui">
+        <button id="pick-cancel" class="btn" data-i18n="pick.cancel"></button>
+        <button id="confirm-place-btn" class="btn primary" data-i18n="pick.confirm"></button>
     </div>
 </div>
 
-<dialog id="info" aria-labelledby="info-title">
+<dialog id="where" class="modal" aria-labelledby="where-title">
+    <div class="info-head"><h2 id="where-title" data-i18n="where.title"></h2><button class="info-x" data-i18n-attr="aria-label:info.close">×</button></div>
+    <div class="info-body">
+        <p id="where-msg"></p>
+        <div class="row">
+            <input id="where-q" type="search" enterkeyhint="search" data-i18n-attr="placeholder:search.ph;aria-label:search.label">
+            <button id="where-go" class="btn" data-i18n="where.search"></button>
+        </div>
+        <div class="where-actions">
+            <button id="where-retry" class="btn"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg> <span data-i18n="where.retry"></span></button>
+            <button id="where-pick" class="btn"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg> <span data-i18n="where.pick"></span></button>
+            <button id="where-center" class="btn" data-i18n="where.center"></button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="info" class="modal" aria-labelledby="info-title">
     <div class="info-head"><h2 id="info-title" data-i18n="info.title"></h2><button class="info-x" data-i18n-attr="aria-label:info.close">×</button></div>
     <div class="info-body">
-        <p><label><span data-i18n="info.lang"></span>: <select id="lang" style="width:auto"><option value="de">Deutsch</option><option value="en">English</option></select></label></p>
+        <p><label><span data-i18n="info.lang"></span>: <select id="lang" class="auto"><option value="de">Deutsch</option><option value="en">English</option></select></label></p>
         <p data-i18n="info.intro"></p>
 
         <h3 data-i18n="info.h.colors"></h3>

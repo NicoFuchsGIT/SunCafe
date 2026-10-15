@@ -6,6 +6,7 @@ export const OVERPASS = ['https://overpass-api.de/api/interpreter','https://lz4.
 
 // Radien in Metern
 export const CAFE_RADIUS = 1000;          // Suchradius für Cafés um den gewählten Ort
+export const SORT_SUN_MAX_M = 800;        // „Meiste Sonne“ reiht nur Orte bis zu dieser Entfernung vorn ein (zu Fuß erreichbar)
 export const RINGS = [300, 600, 1050];    // Entfernungsringe auf der Karte
 export const SHADOW_REACH = 300;          // weiter reicht kein Schatten in die Rechnung ein
 export const TERRACE_MATCH_RADIUS = 25;   // OSM-Terrasse gehört zum nächsten Café innerhalb dieses Abstands

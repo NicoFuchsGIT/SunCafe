@@ -76,6 +76,17 @@ Ziel: Die App ist unterwegs einhändig bedienbar.
 | D2.7 | Standortfluss: abgelehnt oder Zeitüberschreitung führt zur Frage „Wo bist du?“ mit Suchfeld, Hinweis außerhalb Wiens (E8) | 2 h |
 | D2.8 | Tap-Ziele mindestens 44 px, `--mute`-Kontrast prüfen, Fokus und Tastatur, `aria`-Beschriftung der neuen Elemente | 1 h |
 
+**Stand:** D2.1 bis D2.8 sind im Code umgesetzt und mit Playwright-Mobile-Emulation (iPhone 14, 390 × 844) und Desktop-Ansicht geprüft (`npm run test:e2e`). Entscheidungen dabei:
+- Standard-Sortierung ist „Meiste Sonne“ bis 800 m, weiter entfernte Orte folgen nach Entfernung.
+- Chip „Abend“ = eine Stunde vor Sonnenuntergang (entfällt danach), „Morgen früh“ = zwei Stunden nach Sonnenaufgang.
+- Mobil ist die Liste ein Vollbild-Overlay, am Desktop bleibt sie als Spalte links.
+- Standort wird sofort abgefragt; bei Ablehnung, Fehler oder erfolgloser Adresssuche öffnet sich „Wo bist du?“ (Adresse, erneut versuchen, auf der Karte wählen, Wien Zentrum). Es gibt keinen stillen Wien-Fallback mehr.
+- Zoom-Knöpfe und der Pin-Knopf der Karte gibt es nur am Desktop; mobil erreicht man „Auf der Karte wählen“ über den Dialog.
+- Route: Google Maps, auf Apple-Geräten Apple Karten mit Google Maps als zweiter Link.
+- Wetterzeile sitzt unter dem Suchfeld.
+
+**Noch offen:** Test auf einem echten iPhone und Android-Gerät. Im Dunkelmodus werden die Marker mit der Karte invertiert (gehört zu D3).
+
 **Fertig, wenn:** Auf einem Handy führen höchstens zwei Taps von der geöffneten App zur Route. Test mit Playwright-Mobile-Emulation und mindestens einem echten Gerät.
 
 ---
@@ -116,7 +127,7 @@ Voraussetzung: Logo liegt vor.
 
 | Punkt | Notiz |
 |-------|-------|
-| Standard-Sortierung | Sonne oder Entfernung? Empfehlung: Sonne zuerst, mit Gehminuten als Obergrenze. Entscheiden in D2.4. |
+| Standard-Sortierung | Entschieden: Sonne zuerst, Obergrenze 800 m (`SORT_SUN_MAX_M`). |
 | Weitere Filter | Terrasse, Hunde erlaubt, Barrierefreiheit, Steckdosen; hängt von OSM-Tags ab, Datenlage vorher prüfen |
 | Echtes Gerät | Mindestens ein iPhone und ein Android-Gerät für D2 und D4 |
 | Logo | Zeitplan offen, blockiert nur D4 |
