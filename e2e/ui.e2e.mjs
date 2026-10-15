@@ -52,14 +52,18 @@ before(async () => {
 after(async () => { await browser?.close(); server?.close(); });
 
 // Seite öffnen zu einer festen Uhrzeit (UTC); vote: Antwort der Vote-API
-async function open(time, vote, {mobile = false, geo = 'ok'} = {}) {
-    // iPhone 14: 390 × 844, Touch
-    const ctx = await browser.newContext({locale: 'de-AT', timezoneId: 'Europe/Vienna',
-        ...(mobile ? {viewport: {width: 390, height: 844}, hasTouch: true, isMobile: true, deviceScaleFactor: 3} : {})});
+async function open(time, vote, {mobile = false, geo = 'ok', size = [390, 844], safe = null, ua = null} = {}) {
+    // Standard iPhone 14: 390 × 844, Touch; safe = {top, bottom} ersetzt env(safe-area-inset-*) (Chromium kennt keine Notch)
+    const ctx = await browser.newContext({locale: 'de-AT', timezoneId: 'Europe/Vienna', ...(ua ? {userAgent: ua} : {}),
+        ...(mobile ? {viewport: {width: size[0], height: size[1]}, hasTouch: true, isMobile: true, deviceScaleFactor: 3} : {})});
     const page = await ctx.newPage();
     await page.addInitScript(g => { window.__geo = g; }, geo);
     await page.clock.install({time: new Date(time)});
     await page.route('**/vendor/maplibre-gl.js', r => r.fulfill({contentType: 'text/javascript', body: `(${MAP_STUB})()`}));
+    if (safe) await page.route('**/css/style.css', async r => {
+        const resp = await r.fetch();
+        r.fulfill({response: resp, body: (await resp.text()).replaceAll('env(safe-area-inset-top)', safe.top + 'px').replaceAll('env(safe-area-inset-bottom)', safe.bottom + 'px')});
+    });
     await page.route('**/api.open-meteo.com/**', r => r.abort());
     await page.route('**/nominatim.openstreetmap.org/**', r => r.abort());
     const sent = [];
@@ -196,5 +200,58 @@ test('Standort abgelehnt: Dialog „Wo bist du?“ statt stillem Wien, nichts wi
     await page.locator('#where-center').click(); // bewusste Wahl: Wien Zentrum
     await page.waitForSelector('#list li', {state: 'attached'});
     assert.equal(await page.locator('#where[open]').count(), 0);
+    await ctx.close();
+});
+
+test('Manuell platzieren: Pin-Knopf in der Topbar, Abbrechen und Bestätigen', {skip}, async () => {
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true});
+    await page.locator('#pick-btn').click();
+    assert.equal(await page.locator('#center-marker').isVisible(), true);
+    assert.equal(await page.locator('#pick-bar').isVisible(), true);
+    assert.equal(await page.locator('#dock').isHidden(), true);
+    await page.locator('#pick-cancel').click();
+    assert.equal(await page.locator('#center-marker').isHidden(), true);
+    assert.equal(await page.locator('#dock').isVisible(), true);
+    await page.locator('#pick-btn').click();
+    await page.keyboard.press('Escape'); // Esc bricht ebenfalls ab
+    assert.equal(await page.locator('#pick-bar').isHidden(), true);
+    await page.locator('#pick-btn').click();
+    await page.locator('#confirm-place-btn').click();
+    assert.equal(await page.locator('#pick-bar').isHidden(), true);
+    await page.waitForSelector('#list li', {state: 'attached'});
+    await ctx.close();
+});
+
+test('iPhone 17 (402 × 874, Dynamic Island): Info-Dialog mit „×“ liegt innerhalb der Safe-Area und schließt', {skip}, async () => {
+    const safe = {top: 59, bottom: 34};
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true, size: [402, 874], safe});
+    await page.locator('#info-btn').click();
+    const r = await page.locator('#info').boundingBox(), x = await page.locator('#info .info-x').boundingBox();
+    assert.ok(r.y >= safe.top, 'Dialog beginnt unter der Statusleiste: ' + r.y);
+    assert.ok(r.y + r.height <= 874 - safe.bottom, 'Dialog endet über dem Home-Indikator');
+    assert.ok(x.y >= safe.top && x.x + x.width <= 402 && x.x >= 0, '× sichtbar: ' + JSON.stringify(x));
+    await page.locator('#info .info-x').click();
+    assert.equal(await page.locator('#info[open]').count(), 0);
+    // „Wo bist du?“ folgt derselben Regel
+    await ctx.close();
+});
+
+test('iPhone: Google Maps ist die Hauptwahl, Apple Karten der zweite Link, die letzte Wahl wird gemerkt', {skip}, async () => {
+    const ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true, ua});
+    await openFirst(page);
+    assert.match(await page.locator('#sheet .btn-route').getAttribute('href'), /google\.com\/maps\/dir/);
+    assert.match(await page.locator('#sheet .route-alt').getAttribute('href'), /maps\.apple\.com/);
+    await page.evaluate(() => { document.querySelector('#sheet .route-alt').target = '_self'; document.querySelector('#sheet .route-alt').removeAttribute('href'); document.querySelector('#sheet .route-alt').click(); });
+    await page.keyboard.press('Escape'); await page.locator('#toggle-sidebar').click(); await page.locator('#list li').first().click();
+    await page.waitForSelector('#sheet:not([hidden])');
+    assert.match(await page.locator('#sheet .btn-route').getAttribute('href'), /maps\.apple\.com/, 'Apple Karten ist jetzt die Hauptwahl');
+    await ctx.close();
+});
+
+test('Android und Desktop: nur ein Routenlink (Google Maps)', {skip}, async () => {
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}));
+    await openFirst(page);
+    assert.equal(await page.locator('#sheet .route-alt').count(), 0);
     await ctx.close();
 });

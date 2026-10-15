@@ -125,12 +125,13 @@ li.closed{opacity:.5}
 #pick-bar{position:absolute;z-index:40;left:0;right:0;bottom:calc(32px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:12px}
 
 /* Dialoge: Info, Wo bist du? */
-dialog.modal{width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 48px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);overflow:auto}
+/* Dialoge bleiben innerhalb der Safe-Area (Dynamic Island, Home-Indikator): oben und unten gleicher Abstand, damit „×“ nie unter der Statusleiste liegt */
+dialog.modal{--m:max(16px,env(safe-area-inset-top),env(safe-area-inset-bottom));width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 2 * var(--m));max-height:calc(100dvh - 2 * var(--m));padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);overflow:auto}
 dialog.modal::backdrop{background:rgba(10,15,25,.5)}
 .info-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:10px 12px 4px 20px;background:var(--card)}
 .info-head h2{margin:0;font-size:18px}
 .info-x{min-width:44px;min-height:44px;padding:2px 10px;font-size:22px;line-height:1.2;border:0}
-.info-body{padding:0 20px 18px;font-size:14px;line-height:1.5}
+.info-body{padding:0 20px 18px;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
 .info-body h3{margin:16px 0 4px;font-size:14px}
 .info-body p{margin:4px 0}
 .info-body a{color:var(--ink)}

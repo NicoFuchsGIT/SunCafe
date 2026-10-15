@@ -81,11 +81,12 @@ Ziel: Die App ist unterwegs einhändig bedienbar.
 - Chip „Abend“ = eine Stunde vor Sonnenuntergang (entfällt danach), „Morgen früh“ = zwei Stunden nach Sonnenaufgang.
 - Mobil ist die Liste ein Vollbild-Overlay, am Desktop bleibt sie als Spalte links.
 - Standort wird sofort abgefragt; bei Ablehnung, Fehler oder erfolgloser Adresssuche öffnet sich „Wo bist du?“ (Adresse, erneut versuchen, auf der Karte wählen, Wien Zentrum). Es gibt keinen stillen Wien-Fallback mehr.
-- Zoom-Knöpfe und der Pin-Knopf der Karte gibt es nur am Desktop; mobil erreicht man „Auf der Karte wählen“ über den Dialog.
-- Route: Google Maps, auf Apple-Geräten Apple Karten mit Google Maps als zweiter Link.
+- Manuell platzieren hat einen festen Pin-Knopf in der Topbar (mobil und Desktop); Zoom-Knöpfe gibt es nur am Desktop. Der Dialog „Wo bist du?“ bietet es zusätzlich an.
+- Dialoge bleiben innerhalb der Safe-Area (Dynamic Island, Home-Indikator), sonst liegt das „×“ unter der Statusleiste.
+- Route: Google Maps ist die Hauptwahl; auf Apple-Geräten gibt es „In Apple Karten öffnen“ als zweiten Link, die zuletzt benutzte App wird zur Hauptwahl.
 - Wetterzeile sitzt unter dem Suchfeld.
 
-**Noch offen:** Test auf einem echten iPhone und Android-Gerät. Im Dunkelmodus werden die Marker mit der Karte invertiert (gehört zu D3).
+**Noch offen:** Test auf einem Android-Gerät (iPhone 14 geprüft). Im Dunkelmodus werden die Marker mit der Karte invertiert (gehört zu D3).
 
 **Fertig, wenn:** Auf einem Handy führen höchstens zwei Taps von der geöffneten App zur Route. Test mit Playwright-Mobile-Emulation und mindestens einem echten Gerät.
 
