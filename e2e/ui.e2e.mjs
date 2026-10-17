@@ -157,6 +157,25 @@ test('Listeneintrag öffnet das Sheet auf der Karte, Route-Link hat Koordinaten 
     await ctx.close();
 });
 
+test('Sheet: Sonnen-Timeline für heute mit Markierung der gewählten Zeit und „Beste Stunde“, nachts für morgen', {skip}, async () => {
+    const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true});
+    await openFirst(page);
+    await page.waitForSelector('#sheet .timeline');
+    assert.equal(await page.locator('#sheet .tl-head').textContent(), 'Sonne heute');
+    assert.ok(await page.locator('#sheet .tl-bar span').count() >= 1);
+    assert.equal(await page.locator('#sheet .tl-now').count(), 1);
+    assert.match(await page.locator('#sheet .tl-ends').textContent(), /^0[45]:\d\d2[01]:\d\d$/); // Sonnenauf- und -untergang Wien im Juli
+    assert.match(await page.locator('#sheet .tl-best').textContent(), /Beste Stunde: \d\d:\d\d–\d\d:\d\d · \d+ min Sonne|keine Sonne mehr/);
+    await page.screenshot({path: process.env.SHOT || '/dev/null'});
+    await ctx.close();
+    const night = await open('2026-07-01T20:30:00Z', () => ({status: 204}));
+    await openFirst(night.page);
+    await night.page.waitForSelector('#sheet .timeline');
+    assert.equal(await night.page.locator('#sheet .tl-head').textContent(), 'Sonne morgen');
+    assert.equal(await night.page.locator('#sheet .tl-now').count(), 0);
+    await night.ctx.close();
+});
+
 test('Chips: Jetzt ist aktiv, +1 h setzt den Schieber, „Vorschau“ erscheint', {skip}, async () => {
     const {page, ctx} = await open('2026-07-01T10:00:00Z', () => ({status: 204}), {mobile: true});
     assert.equal(await page.locator('[data-chip=now]').getAttribute('aria-pressed'), 'true');

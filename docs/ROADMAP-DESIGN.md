@@ -84,6 +84,7 @@ Ziel: Die App ist unterwegs einhändig bedienbar.
 | D2.6 | Marker mit Symbolen und dunklem Rand (Sonne, Teils, Schatten, Nacht, geschlossen), Kontrast mindestens 3:1 | 2 h |
 | D2.7 | Standortfluss: abgelehnt oder Zeitüberschreitung führt zur Frage „Wo bist du?“ mit Suchfeld, Hinweis außerhalb Wiens (E8) | 2 h |
 | D2.8 | Tap-Ziele mindestens 44 px, `--mute`-Kontrast prüfen, Fokus und Tastatur, `aria`-Beschriftung der neuen Elemente | 1 h |
+| D2.9 | Sonnen-Timeline im Sheet (Sonnenauf- bis -untergang, Sonne / Schatten / geschlossen, Markierung der gewählten Zeit) und „Beste Stunde“ ab der gewählten Zeit | 3 h |
 
 **Stand:** D2.1 bis D2.8 sind im Code umgesetzt und mit Playwright-Mobile-Emulation (iPhone 14, 390 × 844) und Desktop-Ansicht geprüft (`npm run test:e2e`). Entscheidungen dabei:
 - Standard-Sortierung ist „Meiste Sonne“ bis 800 m, weiter entfernte Orte folgen nach Entfernung.
@@ -95,6 +96,11 @@ Ziel: Die App ist unterwegs einhändig bedienbar.
 - Dialoge bleiben innerhalb der Safe-Area (Dynamic Island, Home-Indikator), sonst liegt das „×“ unter der Statusleiste.
 - Route: Google Maps ist die Hauptwahl; auf Apple-Geräten gibt es „In Apple Karten öffnen“ als zweiten Link, die zuletzt benutzte App wird zur Hauptwahl.
 - Wetterzeile sitzt unter dem Suchfeld.
+
+D2.9 (nachgezogen aus Phase 5 der Feature-Roadmap):
+- Die Timeline zeigt den Tag der gewählten Zeit von Sonnenauf- bis -untergang in 5-min-Schritten; nach Sonnenuntergang den nächsten Tag („Sonne morgen“). Geschlossen ist schraffiert, die gewählte Zeit ein Strich.
+- „Beste Stunde“ = 60-min-Fenster ab der gewählten Zeit mit den meisten Sonnenminuten bei geöffnetem Café, das früheste bei Gleichstand, auf die Sonnenschritte gekürzt. Rechnung in `sunSlots`/`bestWindow` (`js/sunminutes.js`), ohne DOM und getestet.
+- Der Balken ist für Screenreader ausgeblendet; die Aussage steht als Text darunter (E12).
 
 **Noch offen:** Test auf einem Android-Gerät (iPhone 14 geprüft). Im Dunkelmodus werden die Marker mit der Karte invertiert (gehört zu D3).
 
@@ -159,4 +165,4 @@ Voraussetzung: Logo liegt vor.
 
 - D1 und D2 können sofort starten, sie berühren die Rechenmodule nicht.
 - Phase 3 (Votes) baut ihre UI in das Café-Sheet aus D2.2, nicht mehr ins Popup. Bis D2 fertig ist, bleibt Phase 3 zurückgestellt oder nutzt das alte Popup.
-- Phase 5 der Feature-Roadmap entfällt zugunsten dieser Datei. Die Sonnen-Timeline pro Café und „Beste Stunde“ kommen nach D2 in das Sheet.
+- Phase 5 der Feature-Roadmap entfällt zugunsten dieser Datei. Die Sonnen-Timeline pro Café und „Beste Stunde“ sind als D2.9 im Sheet umgesetzt.

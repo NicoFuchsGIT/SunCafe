@@ -6,6 +6,45 @@ Funktioniert weltweit; für Wien liegt ein vorab geladener Datensatz bei, der di
 
 Quellcode: https://github.com/NicoFuchsGIT/SunCafe
 
+## Architektur
+
+Wien wird vorberechnet, weltweit rechnet der Browser selbst, Vercel Functions nur für schlanke APIs (Entscheidung und Begründung: [PRD §9](docs/PRD.md#9-architektur-entscheidung)).
+
+```mermaid
+flowchart LR
+    subgraph GA["GitHub Actions (1. und 15. im Monat)"]
+        UW["update-wien.yml"] --> PL["pipeline/points.py<br/>Messpunkte und Horizontmasken"]
+    end
+    subgraph EXT["Externe Dienste"]
+        OV[("Overpass<br/>OSM-Orte")]
+        WFS[("Stadt Wien WFS<br/>Baukörperhöhen")]
+        TT[("Terrain Tiles<br/>Gelände")]
+        OFM[("OpenFreeMap<br/>Karte und Gebäude")]
+        NOM[("Nominatim<br/>Adresssuche")]
+        OM[("Open-Meteo<br/>Wetter, Zeitzone")]
+    end
+    subgraph V["Vercel"]
+        ST["Statische Dateien<br/>index.html, js/, data/wien.json, data/horizon/"]
+        APO["api/overpass.js<br/>Proxy mit Cache"]
+        APV["api/vote.js · api/votes-export.js"]
+        KV[("Upstash Redis<br/>Votes")]
+    end
+    subgraph B["Browser (js/)"]
+        UI["ui.js<br/>Karte, Liste, Sheet, Schieber"]
+        HZ["horizon.js<br/>Maske → Lookup"]
+        SM["sunminutes.js<br/>Sonnenminuten, Timeline, Beste Stunde"]
+    end
+
+    UW --> OV
+    PL --> WFS & TT
+    UW -- "commit wien.json, horizon/" --> ST
+    ST --> UI
+    UI -- "außerhalb Wiens" --> APO --> OV
+    UI --> OFM & NOM & OM
+    UI -- "Wien: vorberechnete Maske<br/>sonst aus Kachel-Gebäuden" --> HZ --> SM
+    UI -- "1-Tap-Vote" --> APV --> KV
+```
+
 ## Aufbau
 
 ```

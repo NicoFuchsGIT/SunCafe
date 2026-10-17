@@ -82,6 +82,17 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .sheet-state .icon{width:22px;height:22px}
 .sheet-state .st-sun,.sheet-state .st-partial{color:#b45309}
 .sheet-state .sm{margin-left:auto;font-weight:600}
+/* Sonnen-Timeline: Zustand über Farbe und Muster (geschlossen schraffiert), Aussage zusätzlich als Text darunter */
+.timeline{margin-top:10px}
+.tl-head{font-size:13px;color:var(--mute);margin-bottom:4px}
+.tl-bar{position:relative;display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line)}
+.tl-bar span{min-width:1px}
+.tl-sun{background:var(--sun)}.tl-shade{background:var(--shade)}.tl-night{background:var(--line)}
+.tl-closed{background:repeating-linear-gradient(135deg,var(--line) 0 3px,var(--card) 3px 6px)}
+.tl-now{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--ink)}
+.tl-ends{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin-top:2px}
+#sheet p.tl-best{display:flex;align-items:center;gap:6px;margin-top:6px;font-weight:600}
+.tl-best .icon{width:18px;height:18px;color:#b45309}
 .btn-route{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;margin-top:12px;border-radius:12px;background:var(--sun);color:#14213d;font-weight:700;font-size:16px;text-decoration:none}
 .btn-route .icon{width:22px;height:22px}
 .route-alt{display:block;margin-top:8px;padding:10px 0;text-align:center;font-size:14px;color:var(--ink)}

@@ -1,12 +1,12 @@
 // ---------- Einstiegspunkt: Karte, Zustand, Anzeige, Bedienung ----------
-import {STYLE_URL, STYLE_DARK_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, DARK_ALT, EYE_HEIGHT, CAFE_RADIUS, SORT_SUN_MAX_M} from './config.js';
+import {STYLE_URL, STYLE_DARK_URL, WIEN, RINGS, STEP_MIN, MIN_ALT, DARK_ALT, EYE_HEIGHT, CAFE_RADIUS, SORT_SUN_MAX_M, SUN_STEP_MIN} from './config.js';
 import {M_PER_DEG, kxAt} from './geo.js';
 import {attachBuildings} from './shade.js';
 import {attachMasks, maskShade} from './horizon.js';
-import {sunTrack, sunMinutes} from './sunminutes.js';
-import {wall, fmtD, openInfo} from './hours.js';
+import {sunTrack, sunMinutes, sunSlots, bestWindow} from './sunminutes.js';
+import {wall, fmtD, fmtT, openInfo} from './hours.js';
 import {deviceId, votedRecently, markVoted, buildVote, checkOnSite, sendVote} from './vote.js';
-import {t, getLang, setLang, applyStatic, fmtDist} from './i18n.js';
+import {t, getLang, setLang, applyStatic, fmtDist, dayShort} from './i18n.js';
 import {sleep, prefetchWien, prefetchHorizon, fetchCafes, region, geocode, fetchWeather, loadBuildings, loadHorizon, parseCafes, inWien, ptypeOf} from './data.js';
 import {CHIPS, chipSlot} from './timechips.js';
 import {isApple, googleUrl, appleUrl} from './route.js';
@@ -250,6 +250,7 @@ function openSheet(id) {
     const stTxt = document.createElement('span'); stTxt.textContent = stateText(c) + (c.calc ? t('state.approx') : ''); st.appendChild(stTxt);
     if (c.sunMin != null && c.state !== 'night') { const sm = document.createElement('span'); sm.className = 'sm'; sm.textContent = t('sunmin', {n: c.sunMin}); sm.title = t('sheet.sunMin', {n: c.sunMin}); st.appendChild(sm); }
     el.appendChild(st);
+    const tl = sunTimeline(c); if (tl) el.appendChild(tl);
 
     [...sides, c.info.text, out, c.addr].filter(Boolean).forEach(txt => {
         const p = document.createElement('p'); p.textContent = txt; el.appendChild(p); });
@@ -284,6 +285,53 @@ function openSheet(id) {
     curId = id; sheet.hidden = false;
     showTerr(c);
     if (first) { markList(id); sheet.focus({preventScroll:true}); }
+}
+// Sonnen-Timeline von Sonnenauf- bis -untergang am Tag der gewählten Zeit (nach Sonnenuntergang: der nächste Tag)
+// und „Beste Stunde“ ab der gewählten Zeit. Der Balken ist für Screenreader ausgeblendet, die Textzeile trägt die Aussage.
+function sunTimeline(c) {
+    const d = curTime(), w = wall(d, tz), pos = x => SunCalc.getPosition(x, place.lat, place.lng);
+    const noon = new Date(+d + ((12 - w.getHours()) * 60 - w.getMinutes()) * 60000);
+    let tm = SunCalc.getTimes(noon, place.lat, place.lng);
+    if (d > tm.sunset) tm = SunCalc.getTimes(new Date(+noon + 864e5), place.lat, place.lng);
+    if (isNaN(tm.sunrise) || isNaN(tm.sunset)) return null; // Polartag oder -nacht
+    const step = SUN_STEP_MIN * 60000, start = new Date(Math.floor(tm.sunrise / step) * step);
+    const slots = sunSlots(c, sunTrack(start, pos, tz, (tm.sunset - start) / 60000));
+    if (!slots || !slots.length) return null;
+
+    const box = document.createElement('div'); box.className = 'timeline';
+    const days = Math.round((wall(start, tz).setHours(0, 0, 0, 0) - wall(new Date(), tz).setHours(0, 0, 0, 0)) / 864e5);
+    const head = document.createElement('div'); head.className = 'tl-head';
+    head.textContent = days === 0 ? t('tl.today') : days === 1 ? t('tl.tomorrow') : t('tl.day', {day: dayShort(wall(start, tz).getDay())});
+    box.appendChild(head);
+
+    // Balken aus zusammengefassten Abschnitten gleichen Zustands, Breite nach Dauer
+    const bar = document.createElement('div'); bar.className = 'tl-bar'; bar.setAttribute('aria-hidden', 'true');
+    const total = slots.reduce((a, x) => a + x.min, 0);
+    for (let i = 0; i < slots.length;) {
+        let j = i, min = 0;
+        while (j < slots.length && slots[j].s === slots[i].s) min += slots[j++].min;
+        const seg = document.createElement('span'); seg.className = 'tl-' + slots[i].s; seg.style.flexGrow = min;
+        seg.title = `${fmtT(slots[i].w)}–${fmtT(new Date(+slots[j - 1].w + slots[j - 1].min * 60000))} ${t('tl.' + slots[i].s)}`;
+        bar.appendChild(seg); i = j;
+    }
+    const at = (d - start) / 60000 / total;
+    if (at >= 0 && at <= 1) { const m = document.createElement('i'); m.className = 'tl-now'; m.style.left = (at * 100) + '%'; bar.appendChild(m); }
+    box.appendChild(bar);
+
+    const ends = document.createElement('div'); ends.className = 'tl-ends'; ends.setAttribute('aria-hidden', 'true');
+    ends.innerHTML = '<span></span><span></span>';
+    ends.firstChild.textContent = fmtT(wall(tm.sunrise, tz)); ends.lastChild.textContent = fmtT(wall(tm.sunset, tz));
+    box.appendChild(ends);
+
+    // ab dem Schritt, in dem die gewählte Zeit liegt
+    const best = bestWindow(slots, new Date(+d - SUN_STEP_MIN * 60000)), p = document.createElement('p'); p.className = 'tl-best';
+    if (best) {
+        const a = slots[best.start].w, e = slots[best.end - 1], b = new Date(+e.w + e.min * 60000);
+        p.innerHTML = icon('sun') + ' <span></span>';
+        p.lastChild.textContent = t('tl.best', {from: fmtT(a), to: fmtT(b), n: best.min});
+    } else p.textContent = t('tl.none');
+    box.appendChild(p);
+    return box;
 }
 function closeSheet(instant = false) {
     if (!curId) return;
