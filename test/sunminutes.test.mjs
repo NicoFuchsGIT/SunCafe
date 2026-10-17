@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {sunTrack, sunMinutes, openSpans} from '../js/sunminutes.js';
+import {sunTrack, sunMinutes, openSpans, sunSlots, bestWindow} from '../js/sunminutes.js';
 import {HORIZON_SECTORS} from '../js/config.js';
 
 const DEG = Math.PI / 180;
@@ -83,4 +83,29 @@ test('Öffnungszeiten: ein Aufruf pro Café, in Ortszeit, nur bei Sonne', () => 
 test('ohne Masken: null', () => {
     assert.equal(sunMinutes({}, sunTrack(T0, pos(() => 30))), null);
     assert.equal(sunMinutes({pts: [{}]}, sunTrack(T0, pos(() => 30))), null);
+});
+
+const slots = str => [...str].map((ch, i) => ({d: new Date(+T0 + i * 5 * 60000), min: 5, s: {S: 'sun', '-': 'shade', c: 'closed', n: 'night'}[ch]}));
+
+test('sunSlots: Nacht, geschlossen, Sonne und Schatten pro Schritt', () => {
+    const c = cafe(wallSouth(20));
+    c.oh = hours([0, 50]);
+    // Höhe -5°, 0°, 5° … 55°: unter 0° Nacht, bis 20,1° Schatten durch die Wand, ab Minute 50 geschlossen
+    const s = sunSlots(c, sunTrack(T0, pos(m => m - 5), null, 60, 5)).map(x => x.s).join(',');
+    assert.equal(s, 'night,shade,shade,shade,shade,shade,sun,sun,sun,sun,closed,closed');
+    assert.equal(sunSlots({pts: [{}]}, []), null);
+});
+
+test('bestWindow: frühestes Fenster mit den meisten Sonnenminuten, auf die Sonne gekürzt', () => {
+    assert.deepEqual(bestWindow(slots('----SSSSSSSSSSSSSSSS'), T0), {start: 4, end: 16, min: 60});
+    assert.deepEqual(bestWindow(slots('--SS--------SSSSS---'), T0), {start: 12, end: 17, min: 25});
+    // Lücke im Fenster: Rand bleibt an Sonnenschritten
+    assert.deepEqual(bestWindow(slots('S-SS-----'), T0), {start: 0, end: 4, min: 15});
+});
+
+test('bestWindow: zählt nur ab from, null ohne Sonne', () => {
+    const sl = slots('SSSS----SS--');
+    assert.deepEqual(bestWindow(sl, new Date(+T0 + 10 * 60000)), {start: 2, end: 10, min: 20});
+    assert.equal(bestWindow(sl, new Date(+T0 + 50 * 60000)), null);
+    assert.equal(bestWindow(slots('--cc-nn'), T0), null);
 });

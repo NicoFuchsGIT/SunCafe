@@ -39,3 +39,29 @@ export function sunMinutes(c, track) {
     }
     return sum;
 }
+
+// Zustand pro Schritt für die Sonnen-Timeline im Café-Sheet: 'night' (Sonne unter MIN_ALT), 'closed' (sicher
+// geschlossen), sonst 'sun' oder 'shade' wie bei sunMinutes; null, solange keine Masken berechnet sind
+export function sunSlots(c, track) {
+    if (!c.pts || !c.pts.every(p => p.mask)) return null;
+    const spans = openSpans(c, track);
+    return track.map(s => ({d: s.d, w: s.w, min: s.min, s: s.alt < MIN_ALT ? 'night' : !isOpen(spans, s.w) ? 'closed'
+        : c.pts.some(p => !maskShade(p.mask, s.alt, s.az)) ? 'sun' : 'shade'}));
+}
+
+// „Beste Stunde“: Fenster von len Minuten ab dem ersten Schritt, der nicht vor from beginnt, mit den meisten
+// Sonnenminuten (bei Gleichstand das früheste), auf den ersten und letzten Sonnenschritt gekürzt.
+// Liefert {start, end, min} mit Schrittindizes [start, end) oder null, wenn ab from keine Sonne mehr kommt.
+export function bestWindow(slots, from, len = 60) {
+    let best = null;
+    for (let i = 0; i < slots.length; i++) {
+        if (slots[i].d < from) continue;
+        let sum = 0, dur = 0, first = -1, last = -1;
+        for (let j = i; j < slots.length && dur < len; j++) {
+            dur += slots[j].min;
+            if (slots[j].s === 'sun') { sum += slots[j].min; if (first < 0) first = j; last = j; }
+        }
+        if (sum > (best ? best.min : 0)) best = {start: first, end: last + 1, min: sum};
+    }
+    return best;
+}
